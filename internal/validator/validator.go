@@ -3,6 +3,7 @@ package validator
 import (
 	"regexp"
 	"slices"
+	"strings"
 )
 
 // EmailRX is a standardized regular expression for emails.
@@ -37,6 +38,11 @@ func (v *Validator) Check(ok bool, key string, message string) {
 	if !ok {
 		v.AddError(key, message)
 	}
+}
+
+// NotBlank checks whether the provided string is not empty.
+func NotBlank(value string) bool {
+	return strings.TrimSpace(value) != ""
 }
 
 // PermittedValue checks if the provided value is allowed.

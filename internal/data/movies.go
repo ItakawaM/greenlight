@@ -20,7 +20,7 @@ type Movie struct {
 // ValidateMovie executes validation checks against a Movie instance, populating
 // the provided Validator with any formatting or business-logic errors.
 func ValidateMovie(v *validator.Validator, movie *Movie) {
-	v.Check(movie.Title != "", "title", "must be provided")
+	v.Check(validator.NotBlank(movie.Title), "title", "must be provided")
 	v.Check(len(movie.Title) <= 500, "title", "must not be more than 500 bytes long")
 
 	v.Check(movie.Year != 0, "year", "must be provided")
