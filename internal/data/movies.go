@@ -6,6 +6,7 @@ import (
 	"github.com/ItakawaM/greenlight/internal/validator"
 )
 
+// Movie represents a single movie record in the application.
 type Movie struct {
 	ID        int64     `json:"id"`
 	CreatedAt time.Time `json:"-"`
@@ -16,6 +17,8 @@ type Movie struct {
 	Version   int32     `json:"version"`
 }
 
+// ValidateMovie executes validation checks against a Movie instance, populating
+// the provided Validator with any formatting or business-logic errors.
 func ValidateMovie(v *validator.Validator, movie *Movie) {
 	v.Check(movie.Title != "", "title", "must be provided")
 	v.Check(len(movie.Title) <= 500, "title", "must not be more than 500 bytes long")
