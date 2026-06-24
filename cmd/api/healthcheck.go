@@ -4,6 +4,13 @@ import (
 	"net/http"
 )
 
+// healthcheckHandler responds with system data about API.
+//
+// Route: GET /v1/healthcheck
+//
+// Responses:
+//   - 200 (OK): Data was successfully sent.
+//   - 500 (Internal Server Error): Server encountered a problem.
 func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
 	data := envelope{
 		"status": "available",
