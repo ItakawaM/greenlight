@@ -11,8 +11,10 @@ import (
 	"strings"
 )
 
+// envelope is a wrapper type for sending JSON responses.
 type envelope map[string]any
 
+// readIDParam is a helper method that retrieves id from the request's path.
 func (app *application) readIDParam(r *http.Request) (int64, error) {
 	id, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil || id < 1 {
@@ -22,6 +24,7 @@ func (app *application) readIDParam(r *http.Request) (int64, error) {
 	return int64(id), nil
 }
 
+// writeJSON is a helper method that writes a JSON response with the provided status code, data and headers.
 func (app *application) writeJSON(w http.ResponseWriter, status int, data envelope, headers http.Header) error {
 	js, err := json.MarshalIndent(data, "", "\t")
 	if err != nil {
@@ -38,6 +41,7 @@ func (app *application) writeJSON(w http.ResponseWriter, status int, data envelo
 	return nil
 }
 
+// readJSON is a helper method that reads request's body into the provided dst.
 func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 	maxBytes := 1_048_576
 	r.Body = http.MaxBytesReader(w, r.Body, int64(maxBytes))
