@@ -4,19 +4,19 @@ CREATE TABLE IF NOT EXISTS movies (
     title text NOT NULL,
     year integer NOT NULL,
     runtime integer NOT NULL,
-    genres text[] NOT NULL,
+    genres text [] NOT NULL,
     version integer NOT NULL DEFAULT 1
 );
 
 ALTER TABLE movies
-ADD CONSTRAINT movies_runtime_check CHECK (runtime >= 0);
+ADD CONSTRAINT movies_runtime_check CHECK (runtime > 0);
 
 ALTER TABLE movies
 ADD CONSTRAINT movies_year_check CHECK (
-    year BETWEEN 1888 AND date_part  ('year', now())
+    year BETWEEN 1888 AND date_part('year', now())
 );
 
 ALTER TABLE movies
-ADD CONSTRAINT genres_length_check CHECK (
-    array_length (genres, 1) BETWEEN 1 AND 5
+ADD CONSTRAINT movies_genres_length_check CHECK (
+    cardinality(genres) BETWEEN 1 AND 5
 );
