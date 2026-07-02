@@ -36,8 +36,8 @@ func main() {
 	flag.StringVar(&cfg.environment, "env", "development", "Environment (development|staging|production)")
 
 	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("DATABASE_URL"), "PostgreSQL DSN")
-	flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conns", 25, "PostreSQL Max Open Connections")
-	flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", "15m", "PostreSQL Max Connection Idle Time")
+	flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conns", 25, "PostgreSQL Max Open Connections")
+	flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", "15m", "PostgreSQL Max Connection Idle Time")
 	flag.Parse()
 
 	infoLogger := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
@@ -51,7 +51,7 @@ func main() {
 	if err != nil {
 		errorLogger.Fatal(err)
 	}
-	defer db.Close()
+	defer db.Close() // Graceful shutdown will be implemented later
 
 	infoLogger.Print("database connection pool established")
 
