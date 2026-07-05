@@ -2,9 +2,11 @@ package data
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/ItakawaM/greenlight/internal/validator"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -41,7 +43,27 @@ func (m *MovieModel) Insert(ctx context.Context, movie *Movie) error {
 }
 
 func (m *MovieModel) Get(ctx context.Context, id int64) (*Movie, error) {
-	return nil, nil
+	if id < 1 {
+		return nil, ErrRecordNotFound
+	}
+
+	statement :=
+		`SELECT id, created_at, title, year, runtime, genres, version
+		FROM movies
+		WHERE id = $1;`
+
+	var movie Movie
+	if err := m.db.QueryRow(ctx, statement, id).
+		Scan(&movie.ID, &movie.CreatedAt, &movie.Title, &movie.Year, &movie.Runtime, &movie.Genres, &movie.Version); err != nil {
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+
+	return &movie, nil
 }
 
 func (m *MovieModel) Update(ctx context.Context, movie *Movie) error {
