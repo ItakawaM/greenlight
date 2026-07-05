@@ -78,6 +78,23 @@ func (m *MovieModel) Update(ctx context.Context, movie *Movie) error {
 }
 
 func (m *MovieModel) Delete(ctx context.Context, id int64) error {
+	if id < 1 {
+		return ErrRecordNotFound
+	}
+
+	statement :=
+		`DELETE FROM movies
+		WHERE id = $1;`
+
+	result, err := m.db.Exec(ctx, statement, id)
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected := result.RowsAffected(); rowsAffected == 0 {
+		return ErrRecordNotFound
+	}
+
 	return nil
 }
 
