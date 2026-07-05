@@ -1,9 +1,11 @@
 package data
 
 import (
+	"context"
 	"time"
 
 	"github.com/ItakawaM/greenlight/internal/validator"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // Movie represents a single movie record in the application.
@@ -15,6 +17,39 @@ type Movie struct {
 	Runtime   int32     `json:"runtime,omitempty"`
 	Genres    []string  `json:"genres,omitempty"`
 	Version   int32     `json:"version"`
+}
+
+type MovieModelInterface interface {
+	Insert(ctx context.Context, movie *Movie) error
+	Get(ctx context.Context, id int64) (*Movie, error)
+	Update(ctx context.Context, movie *Movie) error
+	Delete(ctx context.Context, id int64) error
+}
+
+type MovieModel struct {
+	db *pgxpool.Pool
+}
+
+func (m *MovieModel) Insert(ctx context.Context, movie *Movie) error {
+	statement :=
+		`INSERT INTO movies (title, year, runtime, genres)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, created_at, version;`
+
+	return m.db.QueryRow(ctx, statement, movie.Title, movie.Year, movie.Runtime, movie.Genres).
+		Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
+}
+
+func (m *MovieModel) Get(ctx context.Context, id int64) (*Movie, error) {
+	return nil, nil
+}
+
+func (m *MovieModel) Update(ctx context.Context, movie *Movie) error {
+	return nil
+}
+
+func (m *MovieModel) Delete(ctx context.Context, id int64) error {
+	return nil
 }
 
 // ValidateMovie executes validation checks against a Movie instance, populating
