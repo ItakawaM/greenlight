@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/ItakawaM/greenlight/internal/data"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -28,6 +29,7 @@ type application struct {
 	config      config
 	infoLogger  *log.Logger
 	errorLogger *log.Logger
+	models      *data.Models
 }
 
 func main() {
@@ -59,6 +61,7 @@ func main() {
 		config:      cfg,
 		infoLogger:  infoLogger,
 		errorLogger: errorLogger,
+		models:      data.NewModels(db),
 	}
 
 	srv := &http.Server{
