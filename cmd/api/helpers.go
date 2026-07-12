@@ -7,8 +7,11 @@ import (
 	"io"
 	"maps"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/ItakawaM/greenlight/internal/validator"
 )
 
 // envelope is a wrapper type for sending JSON responses.
@@ -22,6 +25,43 @@ func (app *application) readIDParam(r *http.Request) (int64, error) {
 	}
 
 	return int64(id), nil
+}
+
+// readString parses a string param from url values. Returns defaultValue if no param was present.
+func (app *application) readString(qs url.Values, key string, defaultValue string) string {
+	value := qs.Get(key)
+	if value == "" {
+		return defaultValue
+	}
+
+	return value
+}
+
+// readCSV parses a comma-separated param list of strings from url values. Returns defaultValue if no param was present.
+func (app *application) readCSV(qs url.Values, key string, defaultValue []string) []string {
+	value := qs.Get(key)
+	if value == "" {
+		return defaultValue
+	}
+
+	return strings.Split(value, ",")
+}
+
+// readInt parses an integer param from url values. Returns defaultValue if no param was present.
+// Records an error into a passed validator object if the parsed value is not an integer.
+func (app *application) readInt(qs url.Values, key string, defaultValue int, v *validator.Validator) int {
+	value := qs.Get(key)
+	if value == "" {
+		return defaultValue
+	}
+
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		v.AddError(key, "must be an integer")
+		return defaultValue
+	}
+
+	return parsed
 }
 
 // writeJSON is a helper method that writes a JSON response with the provided status code, data and headers.
