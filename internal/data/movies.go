@@ -22,18 +22,40 @@ type Movie struct {
 	Version   int32     `json:"version" db:"version"`
 }
 
+// MovieModelInterface defines the storage operations available for movies.
 type MovieModelInterface interface {
+	// Insert adds a new movie record to the database; populates its
+	// ID, CreatedAt and Version fields on success.
 	Insert(ctx context.Context, movie *Movie) error
+
+	// Get retrieves a movie record by its ID.
+	// Returns ErrRecordNotFound if no movie with that ID exists.
 	Get(ctx context.Context, id int64) (*Movie, error)
+
+	// GetAll returns a paginated, filtered and sorted list of movie records
+	// together with pagination Metadata.
+	// Title performs a full-text search match and is ignored if empty;
+	// genres filters for movies containing all specified genres and is
+	// ignored if empty.
 	GetAll(ctx context.Context, title string, genres []string, filters *Filters) ([]*Movie, Metadata, error)
+
+	// Update persists changes to an existing movie record, using the
+	// movie's Version field for optimistic concurrency control.
+	// It returns ErrEditConflict if the record was modified concurrently
+	// since it was last read.
 	Update(ctx context.Context, movie *Movie) error
+
+	// Delete removes the movie record with the given ID.
+	// It returns ErrRecordNotFound if no movie with that ID exists.
 	Delete(ctx context.Context, id int64) error
 }
 
+// MovieModel implements MovieModelInterface.
 type MovieModel struct {
 	db *pgxpool.Pool
 }
 
+// Insert implements MovieModelInterface.
 func (m *MovieModel) Insert(ctx context.Context, movie *Movie) error {
 	statement :=
 		`INSERT INTO movies (title, year, runtime, genres)
@@ -46,6 +68,7 @@ func (m *MovieModel) Insert(ctx context.Context, movie *Movie) error {
 	return handleContextErrors(err)
 }
 
+// Get implements MovieModelInterface.
 func (m *MovieModel) Get(ctx context.Context, id int64) (*Movie, error) {
 	if id < 1 {
 		return nil, ErrRecordNotFound
@@ -70,6 +93,7 @@ func (m *MovieModel) Get(ctx context.Context, id int64) (*Movie, error) {
 	return &movie, nil
 }
 
+// GetAll implements MovieModelInterface.
 func (m *MovieModel) GetAll(ctx context.Context, title string, genres []string, filters *Filters) ([]*Movie, Metadata, error) {
 	statement :=
 		fmt.Sprintf(
@@ -107,6 +131,7 @@ func (m *MovieModel) GetAll(ctx context.Context, title string, genres []string, 
 	return movies, calculateMetadata(totalRecords, filters.Page, filters.PageSize), nil
 }
 
+// Update implements MovieModelInterface.
 func (m *MovieModel) Update(ctx context.Context, movie *Movie) error {
 	statement :=
 		`UPDATE movies
@@ -125,6 +150,7 @@ func (m *MovieModel) Update(ctx context.Context, movie *Movie) error {
 	}
 }
 
+// Delete implements MovieModelInterface.
 func (m *MovieModel) Delete(ctx context.Context, id int64) error {
 	if id < 1 {
 		return ErrRecordNotFound
