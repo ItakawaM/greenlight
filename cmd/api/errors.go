@@ -1,7 +1,10 @@
 package main
 
 import (
+	"errors"
 	"net/http"
+
+	"github.com/ItakawaM/greenlight/internal/data"
 )
 
 // logError writes an error to application's standard error logger.
@@ -13,9 +16,9 @@ func (app *application) logError(r *http.Request, err error) {
 
 // errorResponse sends a wrapped JSON error message with a provided status code.
 func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, status int, message any) {
-	data := envelope{"error": message}
+	env := envelope{"error": message}
 
-	if err := app.writeJSON(w, status, data, nil); err != nil {
+	if err := app.writeJSON(w, status, env, nil); err != nil {
 		app.logError(r, err)
 		w.WriteHeader(http.StatusInternalServerError)
 	}
@@ -49,4 +52,21 @@ func (app *application) editConflictResponse(w http.ResponseWriter, r *http.Requ
 // failedValidationResponse sends a 422 JSON response with the provided errors object.
 func (app *application) failedValidationResponse(w http.ResponseWriter, r *http.Request, errors map[string]string) {
 	app.errorResponse(w, r, http.StatusUnprocessableEntity, errors)
+}
+
+// handleModelError is a model independent error handler that should be used after
+// any model method. Checks for DB timeout, client cancellation, ordinary model errors and server errors.
+func (app *application) handleModelError(w http.ResponseWriter, r *http.Request, err error) {
+	switch {
+	case errors.Is(err, data.ErrTimeout):
+		app.errorResponse(w, r, http.StatusGatewayTimeout, "the server took too long to process your request")
+	case errors.Is(err, data.ErrCanceled):
+		app.infoLogger.Printf("request canceled by client: %s %s", r.Method, r.URL.RequestURI())
+	case errors.Is(err, data.ErrRecordNotFound):
+		app.notFoundResponse(w, r)
+	case errors.Is(err, data.ErrEditConflict):
+		app.editConflictResponse(w, r)
+	default:
+		app.serverErrorResponse(w, r, err)
+	}
 }

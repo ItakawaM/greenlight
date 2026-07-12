@@ -38,8 +38,10 @@ func (m *MovieModel) Insert(ctx context.Context, movie *Movie) error {
 		VALUES ($1, $2, $3, $4)
 		RETURNING id, created_at, version;`
 
-	return m.db.QueryRow(ctx, statement, movie.Title, movie.Year, movie.Runtime, movie.Genres).
+	err := m.db.QueryRow(ctx, statement, movie.Title, movie.Year, movie.Runtime, movie.Genres).
 		Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
+
+	return handleContextErrors(err)
 }
 
 func (m *MovieModel) Get(ctx context.Context, id int64) (*Movie, error) {
@@ -59,7 +61,7 @@ func (m *MovieModel) Get(ctx context.Context, id int64) (*Movie, error) {
 		case errors.Is(err, pgx.ErrNoRows):
 			return nil, ErrRecordNotFound
 		default:
-			return nil, err
+			return nil, handleContextErrors(err)
 		}
 	}
 
@@ -73,17 +75,15 @@ func (m *MovieModel) Update(ctx context.Context, movie *Movie) error {
 		WHERE id = $5 AND version = $6
 		RETURNING version;`
 
-	if err := m.db.QueryRow(ctx, statement, movie.Title, movie.Year, movie.Runtime, movie.Genres, movie.ID, movie.Version).
-		Scan(&movie.Version); err != nil {
-		switch {
-		case errors.Is(err, pgx.ErrNoRows):
-			return ErrEditConflict
-		default:
-			return err
-		}
-	}
+	err := m.db.QueryRow(ctx, statement, movie.Title, movie.Year, movie.Runtime, movie.Genres, movie.ID, movie.Version).
+		Scan(&movie.Version)
 
-	return nil
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return ErrEditConflict
+	default:
+		return handleContextErrors(err)
+	}
 }
 
 func (m *MovieModel) Delete(ctx context.Context, id int64) error {
@@ -97,7 +97,7 @@ func (m *MovieModel) Delete(ctx context.Context, id int64) error {
 
 	result, err := m.db.Exec(ctx, statement, id)
 	if err != nil {
-		return err
+		return handleContextErrors(err)
 	}
 
 	if rowsAffected := result.RowsAffected(); rowsAffected == 0 {
