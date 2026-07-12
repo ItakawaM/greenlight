@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/ItakawaM/greenlight/internal/validator"
@@ -12,18 +13,19 @@ import (
 
 // Movie represents a single movie record in the application.
 type Movie struct {
-	ID        int64     `json:"id"`
-	CreatedAt time.Time `json:"-"`
-	Title     string    `json:"title"`
-	Year      int32     `json:"year,omitempty"`
-	Runtime   int32     `json:"runtime,omitempty"`
-	Genres    []string  `json:"genres,omitempty"`
-	Version   int32     `json:"version"`
+	ID        int64     `json:"id" db:"id"`
+	CreatedAt time.Time `json:"-" db:"created_at"`
+	Title     string    `json:"title" db:"title"`
+	Year      int32     `json:"year,omitempty" db:"year"`
+	Runtime   int32     `json:"runtime,omitempty" db:"runtime"`
+	Genres    []string  `json:"genres,omitempty" db:"genres"`
+	Version   int32     `json:"version" db:"version"`
 }
 
 type MovieModelInterface interface {
 	Insert(ctx context.Context, movie *Movie) error
 	Get(ctx context.Context, id int64) (*Movie, error)
+	GetAll(ctx context.Context, title string, genres []string, filters *Filters) ([]*Movie, Metadata, error)
 	Update(ctx context.Context, movie *Movie) error
 	Delete(ctx context.Context, id int64) error
 }
@@ -66,6 +68,43 @@ func (m *MovieModel) Get(ctx context.Context, id int64) (*Movie, error) {
 	}
 
 	return &movie, nil
+}
+
+func (m *MovieModel) GetAll(ctx context.Context, title string, genres []string, filters *Filters) ([]*Movie, Metadata, error) {
+	statement :=
+		fmt.Sprintf(
+			`SELECT count(*) OVER(), id, created_at, title, year, runtime, genres, version
+		FROM movies
+		WHERE (to_tsvector('simple', title) @@ plainto_tsquery('simple', $1) OR $1 = '')
+		AND (genres @> $2 OR $2 = '{}')
+		ORDER BY %s %s, id ASC
+		LIMIT $3 OFFSET $4;`, filters.sortColumn(), filters.sortDirection())
+
+	rows, err := m.db.Query(ctx, statement, title, genres, filters.limit(), filters.offset())
+	if err != nil {
+		return nil, Metadata{}, handleContextErrors(err)
+	}
+	defer rows.Close()
+
+	totalRecords := 0
+	movies := []*Movie{}
+
+	for rows.Next() {
+		var movie Movie
+
+		if err := rows.Scan(&totalRecords, &movie.ID, &movie.CreatedAt, &movie.Title, &movie.Year, &movie.Runtime,
+			&movie.Genres, &movie.Version); err != nil {
+			return nil, Metadata{}, handleContextErrors(err)
+		}
+
+		movies = append(movies, &movie)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, Metadata{}, handleContextErrors(err)
+	}
+
+	return movies, calculateMetadata(totalRecords, filters.Page, filters.PageSize), nil
 }
 
 func (m *MovieModel) Update(ctx context.Context, movie *Movie) error {
