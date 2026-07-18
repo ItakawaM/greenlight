@@ -4,7 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -28,7 +28,7 @@ type config struct {
 
 type application struct {
 	config config
-	logger *jsonlog.Logger
+	logger *slog.Logger
 	models *data.Models
 }
 
@@ -42,19 +42,22 @@ func main() {
 	flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", "15m", "PostgreSQL Max Connection Idle Time")
 	flag.Parse()
 
-	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
-
+	logger := jsonlog.New(os.Stdout, slog.LevelInfo)
 	if cfg.environment != "development" && cfg.environment != "staging" && cfg.environment != "production" {
-		logger.PrintFatal(fmt.Errorf("invalid environment provided: %s", cfg.environment), nil)
+		logger.LogAttrs(context.Background(), jsonlog.LevelFatal, "invalid environment provided",
+			slog.String("environment", cfg.environment))
+		os.Exit(1)
 	}
 
 	db, err := openDB(cfg)
 	if err != nil {
-		logger.PrintFatal(err, nil)
+		logger.LogAttrs(context.Background(), jsonlog.LevelFatal, "db connection failed",
+			slog.String("error", err.Error()))
+		os.Exit(1)
 	}
 	defer db.Close() // Graceful shutdown will be implemented later
 
-	logger.PrintInfo("database connection pool established", nil)
+	logger.LogAttrs(context.Background(), slog.LevelInfo, "database connection pool established")
 
 	app := &application{
 		config: cfg,
@@ -65,17 +68,16 @@ func main() {
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", app.config.port),
 		Handler:      app.routes(),
-		ErrorLog:     log.New(logger, "", 0),
+		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
 
-	logger.PrintInfo("starting server", map[string]string{
-		"addr": srv.Addr,
-		"env":  cfg.environment,
-	})
-	logger.PrintFatal(srv.ListenAndServe(), nil)
+	logger.LogAttrs(context.Background(), slog.LevelInfo, "starting server",
+		slog.String("addr", srv.Addr),
+		slog.String("env", cfg.environment))
+	logger.LogAttrs(context.Background(), jsonlog.LevelFatal, srv.ListenAndServe().Error())
 }
 
 func openDB(cfg config) (*pgxpool.Pool, error) {

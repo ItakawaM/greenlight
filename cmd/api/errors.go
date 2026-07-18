@@ -2,19 +2,23 @@ package main
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/ItakawaM/greenlight/internal/data"
 )
 
-// logError writes an error to application's standard error logger.
-//
-// TODO: Log detailed request data as well.
-func (app *application) logError(r *http.Request, err error) {
-	app.logger.PrintError(err, map[string]string{
-		"request_method": r.Method,
-		"request_url":    r.URL.RequestURI(),
-	})
+// logError writes an error to application's standard error logger
+// and records metadata about the request.
+func (app *application) logError(r *http.Request, err error, attrs ...slog.Attr) {
+	all := make([]slog.Attr, 0, len(attrs)+2)
+	all = append(all,
+		slog.String("request_method", r.Method),
+		slog.String("request_url", r.URL.RequestURI()),
+	)
+	all = append(all, attrs...)
+
+	app.logger.LogAttrs(r.Context(), slog.LevelError, err.Error(), all...)
 }
 
 // errorResponse sends a wrapped JSON error message with a provided status code.
@@ -64,10 +68,10 @@ func (app *application) handleModelError(w http.ResponseWriter, r *http.Request,
 	case errors.Is(err, data.ErrTimeout):
 		app.errorResponse(w, r, http.StatusGatewayTimeout, "the server took too long to process your request")
 	case errors.Is(err, data.ErrCanceled):
-		app.logger.PrintInfo("request canceled by client", map[string]string{
-			"request_method": r.Method,
-			"request_url":    r.URL.RequestURI(),
-		})
+		app.logger.LogAttrs(r.Context(), slog.LevelInfo, "request canceled by client",
+			slog.String("request_method", r.Method),
+			slog.String("request_url", r.URL.RequestURI()),
+		)
 	case errors.Is(err, data.ErrRecordNotFound):
 		app.notFoundResponse(w, r)
 	case errors.Is(err, data.ErrEditConflict):

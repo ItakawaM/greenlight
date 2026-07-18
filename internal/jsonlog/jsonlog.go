@@ -1,96 +1,37 @@
 package jsonlog
 
 import (
-	"encoding/json"
 	"io"
-	"os"
-	"runtime/debug"
-	"sync"
-	"time"
+	"log/slog"
 )
-
-type Level int8
 
 const (
-	LevelInfo Level = iota
-	LevelError
-	LevelFatal
-	LevelOff
+	LevelFatal = slog.Level(12)
 )
 
-func (l Level) String() string {
-	switch l {
-	case LevelInfo:
-		return "INFO"
-	case LevelError:
-		return "ERROR"
-	case LevelFatal:
-		return "FATAL"
-	default:
-		return ""
-	}
+var LevelNames = map[slog.Leveler]string{
+	LevelFatal: "FATAL",
 }
 
-type Logger struct {
-	out      io.Writer
-	minLevel Level
-	mu       sync.Mutex
-}
+// New returns a *slog.Logger configured to write structured JSON logs,
+// with an added FATAL level for use during startup failures.
+func New(out io.Writer, minLevel slog.Level) *slog.Logger {
+	handler := slog.NewJSONHandler(out, &slog.HandlerOptions{
+		Level: minLevel,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			if a.Key == slog.LevelKey {
+				level := a.Value.Any().(slog.Level)
+				levelLabel, exists := LevelNames[level]
+				if !exists {
+					levelLabel = level.String()
+				}
 
-func New(out io.Writer, minLevel Level) *Logger {
-	return &Logger{
-		out:      out,
-		minLevel: minLevel,
-	}
-}
+				a.Value = slog.StringValue(levelLabel)
+			}
 
-func (l *Logger) PrintInfo(message string, properties map[string]string) {
-	l.print(LevelInfo, message, properties)
-}
+			return a
+		},
+	})
 
-func (l *Logger) PrintError(err error, properties map[string]string) {
-	l.print(LevelError, err.Error(), properties)
-}
-
-func (l *Logger) PrintFatal(err error, properties map[string]string) {
-	l.print(LevelFatal, err.Error(), properties)
-	os.Exit(1)
-}
-
-func (l *Logger) print(level Level, message string, properties map[string]string) (int, error) {
-	if level < l.minLevel {
-		return 0, nil
-	}
-
-	aux := struct {
-		Level      string
-		Time       string
-		Message    string
-		Properties map[string]string
-		Trace      string
-	}{
-		Level:      level.String(),
-		Time:       time.Now().UTC().Format(time.RFC3339),
-		Message:    message,
-		Properties: properties,
-	}
-
-	if level >= LevelError {
-		aux.Trace = string(debug.Stack())
-	}
-
-	var line []byte
-	line, err := json.Marshal(aux)
-	if err != nil {
-		line = []byte(LevelError.String() + ": unable to marshal log message: " + err.Error())
-	}
-
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	return l.out.Write(append(line, '\n'))
-}
-
-func (l *Logger) Write(message []byte) (n int, err error) {
-	return l.print(LevelError, string(message), nil)
+	return slog.New(handler)
 }
