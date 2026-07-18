@@ -11,7 +11,10 @@ import (
 //
 // TODO: Log detailed request data as well.
 func (app *application) logError(r *http.Request, err error) {
-	app.errorLogger.Print(err)
+	app.logger.PrintError(err, map[string]string{
+		"request_method": r.Method,
+		"request_url":    r.URL.RequestURI(),
+	})
 }
 
 // errorResponse sends a wrapped JSON error message with a provided status code.
@@ -61,7 +64,10 @@ func (app *application) handleModelError(w http.ResponseWriter, r *http.Request,
 	case errors.Is(err, data.ErrTimeout):
 		app.errorResponse(w, r, http.StatusGatewayTimeout, "the server took too long to process your request")
 	case errors.Is(err, data.ErrCanceled):
-		app.infoLogger.Printf("request canceled by client: %s %s", r.Method, r.URL.RequestURI())
+		app.logger.PrintInfo("request canceled by client", map[string]string{
+			"request_method": r.Method,
+			"request_url":    r.URL.RequestURI(),
+		})
 	case errors.Is(err, data.ErrRecordNotFound):
 		app.notFoundResponse(w, r)
 	case errors.Is(err, data.ErrEditConflict):

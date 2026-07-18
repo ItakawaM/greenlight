@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/ItakawaM/greenlight/internal/data"
+	"github.com/ItakawaM/greenlight/internal/jsonlog"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -26,10 +27,9 @@ type config struct {
 }
 
 type application struct {
-	config      config
-	infoLogger  *log.Logger
-	errorLogger *log.Logger
-	models      *data.Models
+	config config
+	logger *jsonlog.Logger
+	models *data.Models
 }
 
 func main() {
@@ -42,38 +42,40 @@ func main() {
 	flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", "15m", "PostgreSQL Max Connection Idle Time")
 	flag.Parse()
 
-	infoLogger := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
-	errorLogger := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Llongfile)
+	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
 
 	if cfg.environment != "development" && cfg.environment != "staging" && cfg.environment != "production" {
-		errorLogger.Fatalf("invalid environment provided: %s", cfg.environment)
+		logger.PrintFatal(fmt.Errorf("invalid environment provided: %s", cfg.environment), nil)
 	}
 
 	db, err := openDB(cfg)
 	if err != nil {
-		errorLogger.Fatal(err)
+		logger.PrintFatal(err, nil)
 	}
 	defer db.Close() // Graceful shutdown will be implemented later
 
-	infoLogger.Print("database connection pool established")
+	logger.PrintInfo("database connection pool established", nil)
 
 	app := &application{
-		config:      cfg,
-		infoLogger:  infoLogger,
-		errorLogger: errorLogger,
-		models:      data.NewModels(db),
+		config: cfg,
+		logger: logger,
+		models: data.NewModels(db),
 	}
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", app.config.port),
 		Handler:      app.routes(),
+		ErrorLog:     log.New(logger, "", 0),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
 
-	infoLogger.Printf("starting %s server on %s", cfg.environment, srv.Addr)
-	errorLogger.Fatal(srv.ListenAndServe())
+	logger.PrintInfo("starting server", map[string]string{
+		"addr": srv.Addr,
+		"env":  cfg.environment,
+	})
+	logger.PrintFatal(srv.ListenAndServe(), nil)
 }
 
 func openDB(cfg config) (*pgxpool.Pool, error) {
