@@ -4,12 +4,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/ItakawaM/greenlight/internal/data"
+	"github.com/ItakawaM/greenlight/internal/jsonlog"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -26,10 +27,9 @@ type config struct {
 }
 
 type application struct {
-	config      config
-	infoLogger  *log.Logger
-	errorLogger *log.Logger
-	models      *data.Models
+	config config
+	logger *slog.Logger
+	models *data.Models
 }
 
 func main() {
@@ -42,38 +42,47 @@ func main() {
 	flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", "15m", "PostgreSQL Max Connection Idle Time")
 	flag.Parse()
 
-	infoLogger := log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
-	errorLogger := log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Llongfile)
-
+	logger := jsonlog.New(os.Stdout, slog.LevelInfo)
 	if cfg.environment != "development" && cfg.environment != "staging" && cfg.environment != "production" {
-		errorLogger.Fatalf("invalid environment provided: %s", cfg.environment)
+		logger.LogAttrs(context.Background(), jsonlog.LevelFatal, "invalid environment provided",
+			slog.String("environment", cfg.environment))
+		os.Exit(1)
 	}
 
 	db, err := openDB(cfg)
 	if err != nil {
-		errorLogger.Fatal(err)
+		logger.LogAttrs(context.Background(), jsonlog.LevelFatal, "db connection failed",
+			slog.String("error", err.Error()))
+		os.Exit(1)
 	}
 	defer db.Close() // Graceful shutdown will be implemented later
 
-	infoLogger.Print("database connection pool established")
+	logger.LogAttrs(context.Background(), slog.LevelInfo, "database connection pool established")
 
 	app := &application{
-		config:      cfg,
-		infoLogger:  infoLogger,
-		errorLogger: errorLogger,
-		models:      data.NewModels(db),
+		config: cfg,
+		logger: logger,
+		models: data.NewModels(db),
 	}
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", app.config.port),
 		Handler:      app.routes(),
+		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
 
-	infoLogger.Printf("starting %s server on %s", cfg.environment, srv.Addr)
-	errorLogger.Fatal(srv.ListenAndServe())
+	logger.LogAttrs(context.Background(), slog.LevelInfo, "starting server",
+		slog.String("addr", srv.Addr),
+		slog.String("env", cfg.environment))
+
+	if err = srv.ListenAndServe(); err != nil {
+		logger.LogAttrs(context.Background(), jsonlog.LevelFatal, "server failed",
+			slog.String("error", err.Error()))
+		os.Exit(1)
+	}
 }
 
 func openDB(cfg config) (*pgxpool.Pool, error) {
