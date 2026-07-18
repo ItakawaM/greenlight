@@ -20,13 +20,15 @@ func New(out io.Writer, minLevel slog.Level) *slog.Logger {
 		Level: minLevel,
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
 			if a.Key == slog.LevelKey {
-				level := a.Value.Any().(slog.Level)
-				levelLabel, exists := LevelNames[level]
-				if !exists {
-					levelLabel = level.String()
-				}
+				level, ok := a.Value.Any().(slog.Level)
+				if ok {
+					levelLabel, exists := LevelNames[level]
+					if !exists {
+						levelLabel = level.String()
+					}
 
-				a.Value = slog.StringValue(levelLabel)
+					a.Value = slog.StringValue(levelLabel)
+				}
 			}
 
 			return a

@@ -77,7 +77,12 @@ func main() {
 	logger.LogAttrs(context.Background(), slog.LevelInfo, "starting server",
 		slog.String("addr", srv.Addr),
 		slog.String("env", cfg.environment))
-	logger.LogAttrs(context.Background(), jsonlog.LevelFatal, srv.ListenAndServe().Error())
+
+	if err = srv.ListenAndServe(); err != nil {
+		logger.LogAttrs(context.Background(), jsonlog.LevelFatal, "server failed",
+			slog.String("error", err.Error()))
+		os.Exit(1)
+	}
 }
 
 func openDB(cfg config) (*pgxpool.Pool, error) {
