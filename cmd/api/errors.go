@@ -61,6 +61,13 @@ func (app *application) failedValidationResponse(w http.ResponseWriter, r *http.
 	app.errorResponse(w, r, http.StatusUnprocessableEntity, errors)
 }
 
+// rateLimitExceededResponse sends a 429 JSON response signifying that
+// the client has hit rate limit.
+func (app *application) rateLimitExceededResponse(w http.ResponseWriter, r *http.Request) {
+	message := "rate limit exceeded"
+	app.errorResponse(w, r, http.StatusTooManyRequests, message)
+}
+
 // handleModelError is a model independent error handler that should be used after
 // any model method. Checks for DB timeout, client cancellation, ordinary model errors and server errors.
 func (app *application) handleModelError(w http.ResponseWriter, r *http.Request, err error) {
