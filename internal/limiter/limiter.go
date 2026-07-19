@@ -2,8 +2,8 @@ package limiter
 
 import (
 	"context"
-	"crypto/sha1"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -42,23 +42,27 @@ if tokens >= 1 then
     allowed = 1
 end
 
+-- seconds until at least 1 token is available
+local retry_after = 0
+if tokens < 1 then
+    retry_after = (1 - tokens) / rps
+end
+
+-- seconds until the bucket is back to full
+local reset_after = (burst - tokens) / rps
+
 -- Update state
 local ttl = math.ceil(burst / rps) * 2 + 1
 redis.call('HMSET', key, 'tokens', tokens, 'last_refill', last_refill)
 redis.call('EXPIRE', key, ttl)
 
-local wait = 0
-if allowed == 0 then
-    local tokens_needed = 1 - tokens
-    local seconds_needed = math.ceil(tokens_needed / rps)
-    local time_since_refill = now - last_refill
-    wait = seconds_needed - time_since_refill
-end
-
--- Return result: allowed (1 or 0), remaining tokens and wait time
-return {allowed, tokens, wait}
+-- Return result: allowed (1 or 0) and remaining tokens
+return {allowed, tokens, tostring(retry_after), tostring(reset_after)}
 `
 
+// TokenBucketLimiter is a redis-based rate limiter implementing Token Bucket algorithm.
+//
+// It's a modified version of https://github.com/redis/docs/blob/main/content/develop/use-cases/rate-limiter/go/token_bucket.go
 type TokenBucketLimiter struct {
 	client       *redis.Client
 	burst        int
@@ -67,16 +71,12 @@ type TokenBucketLimiter struct {
 	scriptLoaded bool
 }
 
+// New returns an initialized TokenBucketLimiter.
 func New(client *redis.Client, burst int, rps float64) *TokenBucketLimiter {
-	h := sha1.New()
-	h.Write([]byte(tokenBucketScript))
-	sha := fmt.Sprintf("%x", h.Sum(nil))
-
 	return &TokenBucketLimiter{
-		client:    client,
-		burst:     burst,
-		rps:       rps,
-		scriptSHA: sha,
+		client: client,
+		burst:  burst,
+		rps:    rps,
 	}
 }
 
@@ -85,6 +85,7 @@ func (t *TokenBucketLimiter) ensureScriptLoaded(ctx context.Context) error {
 		return nil
 	}
 
+	// could potentially be a data race? not sure
 	sha, err := t.client.ScriptLoad(ctx, tokenBucketScript).Result()
 	if err != nil {
 		return err
@@ -96,28 +97,46 @@ func (t *TokenBucketLimiter) ensureScriptLoaded(ctx context.Context) error {
 	return nil
 }
 
-func (t *TokenBucketLimiter) Allow(ctx context.Context, key string) (bool, float64, error) {
+// Allow checks whether the key-user is allowed the request and has not reached
+// the limit. It returns allowed, remaining tokens, "retry after" time and "reset after" time.
+func (t *TokenBucketLimiter) Allow(ctx context.Context, key string) (bool, float64, float64, float64, error) {
 	if err := t.ensureScriptLoaded(ctx); err != nil {
-		return false, 0.0, err
+		return false, 0, 0, 0, err
 	}
 
 	now := float64(time.Now().UnixMicro()) / 1e6
 
-	result, err := t.client.EvalSha(ctx, t.scriptSHA, []string{key}, t.burst, t.rps, now).Int64Slice()
+	result, err := t.client.EvalSha(ctx, t.scriptSHA, []string{key}, t.burst, t.rps, now).Result()
 	if err != nil {
 		if !redis.HasErrorPrefix(err, "NOSCRIPT") {
-			return false, 0, fmt.Errorf("token bucket eval failed: %w", err)
+			return false, 0, 0, 0, fmt.Errorf("token bucket eval failed: %w", err)
 		}
 
-		result, err = t.client.Eval(ctx, tokenBucketScript, []string{key}, t.burst, t.rps, now).Int64Slice()
+		result, err = t.client.Eval(ctx, tokenBucketScript, []string{key}, t.burst, t.rps, now).Result()
 		if err != nil {
-			return false, 0, fmt.Errorf("token bucket eval failed: %w", err)
+			return false, 0, 0, 0, fmt.Errorf("token bucket eval failed: %w", err)
 		}
 		t.scriptLoaded = false
 	}
 
-	allowed := result[0] == 1
-	remaining := float64(result[1])
+	// res is []interface{}: [allowed int64, tokens int64, retry_after string, reset_after string]
+	vals, ok := result.([]any)
+	if !ok || len(vals) != 4 {
+		return false, 0, 0, 0, fmt.Errorf("unexpected token bucket result shape: %v", result)
+	}
 
-	return allowed, remaining, nil
+	allowed := vals[0].(int64) == 1
+	remaining := float64(vals[1].(int64))
+
+	retryAfter, err := strconv.ParseFloat(vals[2].(string), 64)
+	if err != nil {
+		return false, 0, 0, 0, fmt.Errorf("parsing retry_after: %w", err)
+	}
+
+	resetAfter, err := strconv.ParseFloat(vals[3].(string), 64)
+	if err != nil {
+		return false, 0, 0, 0, fmt.Errorf("parsing reset_after: %w", err)
+	}
+
+	return allowed, remaining, retryAfter, resetAfter, nil
 }

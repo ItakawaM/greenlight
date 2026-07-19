@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 // rateLimit is a middleware that limits the amount of requests
@@ -23,17 +25,19 @@ func (app *application) rateLimit(next http.Handler) http.Handler {
 				return
 			}
 
-			allowed, remaining, err := app.limiter.Allow(r.Context(), fmt.Sprintf("ip:%s", ip))
+			allowed, remaining, retryAfter, resetAfter, err := app.limiter.Allow(r.Context(), fmt.Sprintf("ip:%s", ip))
 			if err != nil {
 				app.serverErrorResponse(w, r, err)
 				return
 			}
 
-			// TODO: Adjust rate limiting headers and LUA script to compute time needed for Retry-After
 			w.Header().Set("X-RateLimit-Limit", strconv.Itoa(app.config.limiter.burst))
 			w.Header().Set("X-RateLimit-Remaining", strconv.FormatFloat(remaining, 'f', 0, 64))
+			w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(
+				time.Now().Add(time.Duration(resetAfter*float64(time.Second))).Unix(), 10))
 
 			if !allowed {
+				w.Header().Set("Retry-After", strconv.FormatInt(int64(math.Ceil(retryAfter)), 10))
 				app.rateLimitExceededResponse(w, r)
 				return
 			}
