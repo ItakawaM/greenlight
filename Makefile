@@ -5,10 +5,12 @@ export
 BINARY_PATH ?= ./bin/api
 MAIN_PATH := ./cmd/api
 MIGRATIONS_PATH := ./migrations
-DATABASE_URL := postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=disable
 
-RUN_FLAGS = -port=$(PORT) -env=$(ENVIRONMENT) \
-	-db-max-open-conns=$(POSTGRES_MAX_OPEN_CONNS) -db-max-idle-time=$(POSTGRES_MAX_IDLE_TIME) \
+POSTGRES_URL := postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=disable
+REDIS_URL := redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/0
+
+RUN_FLAGS = -port=$(SERVER_PORT) -env=$(SERVER_ENVIRONMENT) \
+	-postgres-max-open-conns=$(POSTGRES_MAX_OPEN_CONNS) -postgres-max-idle-time=$(POSTGRES_MAX_IDLE_TIME) \
 	-limiter-rps=$(LIMITER_RPS) -limiter-burst=$(LIMITER_BURST) -limiter-enabled=$(LIMITER_ENABLED)
 
 .DEFAULT_GOAL := help
@@ -34,10 +36,10 @@ compose-down:
 	docker compose down
 
 migrate-up:
-	migrate -path=$(MIGRATIONS_PATH) -database="$(DATABASE_URL)" up
+	migrate -path=$(MIGRATIONS_PATH) -database="$(POSTGRES_URL)" up
 
 migrate-down:
-	migrate -path=$(MIGRATIONS_PATH) -database="$(DATABASE_URL)" down
+	migrate -path=$(MIGRATIONS_PATH) -database="$(POSTGRES_URL)" down
 
 test:
 	go test ./... -v

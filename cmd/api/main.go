@@ -12,6 +12,7 @@ import (
 	"github.com/ItakawaM/greenlight/internal/data"
 	"github.com/ItakawaM/greenlight/internal/jsonlog"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 const version = "1.0.0"
@@ -19,10 +20,13 @@ const version = "1.0.0"
 type config struct {
 	port        int
 	environment string
-	db          struct {
+	postgres    struct {
 		dsn          string
 		maxOpenConns int
 		maxIdleTime  string
+	}
+	redis struct {
+		dsn string
 	}
 	limiter struct {
 		rps     float64
@@ -39,40 +43,34 @@ type application struct {
 
 func main() {
 	var cfg config
-	flag.IntVar(&cfg.port, "port", 4000, "API Server Port")
-	flag.StringVar(&cfg.environment, "env", "development", "Environment (development|staging|production)")
-
-	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("DATABASE_URL"), "PostgreSQL DSN")
-	flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conns", 25, "PostgreSQL maximum open connections")
-	flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", "15m", "PostgreSQL maximum connection idle time")
-
-	flag.Float64Var(&cfg.limiter.rps, "limiter-rps", 2, "Rate Limiter maximum requests/second")
-	flag.IntVar(&cfg.limiter.burst, "limiter-burst", 4, "Rate Limiter maximum burst")
-	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
-
-	flag.Parse()
+	loadConfig(&cfg) // TODO: Define better config parsing and validation
 
 	logger := jsonlog.New(os.Stdout, slog.LevelInfo)
-	if cfg.environment != "development" && cfg.environment != "staging" && cfg.environment != "production" {
-		logger.LogAttrs(context.Background(), jsonlog.LevelFatal, "invalid environment provided",
-			slog.String("environment", cfg.environment))
-		os.Exit(1)
-	}
 
-	db, err := openDB(cfg)
+	postgres, err := openPostgres(cfg)
 	if err != nil {
-		logger.LogAttrs(context.Background(), jsonlog.LevelFatal, "db connection failed",
+		logger.LogAttrs(context.Background(), jsonlog.LevelFatal, "postgres connection failed",
 			slog.String("error", err.Error()))
 		os.Exit(1)
 	}
-	defer db.Close() // Graceful shutdown will be implemented later
+	defer postgres.Close() // Graceful shutdown will be implemented later
 
-	logger.LogAttrs(context.Background(), slog.LevelInfo, "database connection pool established")
+	logger.LogAttrs(context.Background(), slog.LevelInfo, "postgres connection pool established")
+
+	redisClient, err := openRedis(cfg)
+	if err != nil {
+		logger.LogAttrs(context.Background(), jsonlog.LevelFatal, "redis connection failed",
+			slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+	defer redisClient.Close() // Graceful shutdown will be implemented later
+
+	logger.LogAttrs(context.Background(), slog.LevelInfo, "redis connection client established")
 
 	app := &application{
 		config: cfg,
 		logger: logger,
-		models: data.NewModels(db),
+		models: data.NewModels(postgres),
 	}
 
 	srv := &http.Server{
@@ -95,21 +93,46 @@ func main() {
 	}
 }
 
-func openDB(cfg config) (*pgxpool.Pool, error) {
-	poolCfg, err := pgxpool.ParseConfig(cfg.db.dsn)
+func loadConfig(cfg *config) {
+	// Server Settings
+	flag.IntVar(&cfg.port, "port", 4000, "API Server Port")
+	flag.StringVar(&cfg.environment, "env", "development", "Environment (development|staging|production)")
+
+	// Postgres Settings
+	flag.StringVar(&cfg.postgres.dsn, "postgres-dsn", os.Getenv("POSTGRES_URL"), "PostgreSQL DSN")
+	flag.IntVar(&cfg.postgres.maxOpenConns, "postgres-max-open-conns", 25, "PostgreSQL maximum open connections")
+	flag.StringVar(&cfg.postgres.maxIdleTime, "postgres-max-idle-time", "15m", "PostgreSQL maximum connection idle time")
+
+	// Redis Settings
+	flag.StringVar(&cfg.redis.dsn, "redis-dsn", os.Getenv("REDIS_URL"), "Redis DSN")
+
+	// Limiter Settings
+	flag.Float64Var(&cfg.limiter.rps, "limiter-rps", 2, "Rate Limiter maximum requests/second")
+	flag.IntVar(&cfg.limiter.burst, "limiter-burst", 4, "Rate Limiter maximum burst")
+	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
+
+	flag.Parse()
+}
+
+// openPostgres creates a PostgreSQL pool of connections using the config's DSN
+// and checks for connectivity by pinging.
+// Returns an error if the DSN is wrong, PostgreSQL settings are wrong or
+// the app can't ping the PostgreSQL instance.
+func openPostgres(cfg config) (*pgxpool.Pool, error) {
+	poolCfg, err := pgxpool.ParseConfig(cfg.postgres.dsn)
 	if err != nil {
 		return nil, err
 	}
 
-	duration, err := time.ParseDuration(cfg.db.maxIdleTime)
+	duration, err := time.ParseDuration(cfg.postgres.maxIdleTime)
 	if err != nil {
 		return nil, err
 	}
 
-	poolCfg.MaxConns = int32(cfg.db.maxOpenConns)
+	poolCfg.MaxConns = int32(cfg.postgres.maxOpenConns)
 	poolCfg.MaxConnIdleTime = duration
 
-	db, err := pgxpool.NewWithConfig(context.Background(), poolCfg)
+	postgres, err := pgxpool.NewWithConfig(context.Background(), poolCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -117,9 +140,30 @@ func openDB(cfg config) (*pgxpool.Pool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	if err := db.Ping(ctx); err != nil {
+	if err := postgres.Ping(ctx); err != nil {
 		return nil, err
 	}
 
-	return db, nil
+	return postgres, nil
+}
+
+// openRedis creates a Redis connection using the config's DSN
+// and checks for connectivity by pinging.
+// Returns an error if the DSN is wrong or the app can't ping the Redis instance.
+func openRedis(cfg config) (*redis.Client, error) {
+	opt, err := redis.ParseURL(cfg.redis.dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	client := redis.NewClient(opt)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+
+	if err := client.Ping(ctx).Err(); err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }

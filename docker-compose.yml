@@ -19,5 +19,23 @@ services:
       timeout: 10s
       retries: 5
 
+  redis:
+    image: redis:8.8
+    container_name: greenlight-redis
+    restart: unless-stopped
+    env_file:
+      - .env
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--appendonly", "yes", "--save", "60", "1"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "--no-auth-warning", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
 volumes:
   pgdata:
+  redis-data:
