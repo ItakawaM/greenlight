@@ -12,6 +12,7 @@ import (
 	"github.com/ItakawaM/greenlight/internal/data"
 	"github.com/ItakawaM/greenlight/internal/jsonlog"
 	"github.com/ItakawaM/greenlight/internal/limiter"
+	"github.com/ItakawaM/greenlight/internal/validator"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
@@ -44,30 +45,34 @@ type application struct {
 }
 
 func main() {
-	var cfg config
-	loadConfig(&cfg) // TODO: Define better config parsing and validation
-
 	logger := jsonlog.New(os.Stdout, slog.LevelInfo)
+
+	cfgValidator := validator.New()
+	cfg := loadConfig(cfgValidator)
+	if !cfgValidator.Valid() {
+		var attrs []slog.Attr
+		for key, value := range cfgValidator.Errors {
+			attrs = append(attrs, slog.Any(key, value))
+		}
+		jsonlog.LogFatal(logger, "invalid values provided in settings", attrs...)
+	}
+	logger.Info("settings loaded successfully")
 
 	postgres, err := openPostgres(cfg)
 	if err != nil {
-		logger.LogAttrs(context.Background(), jsonlog.LevelFatal, "postgres connection failed",
-			slog.String("error", err.Error()))
-		os.Exit(1)
+		jsonlog.LogFatal(logger, "postgres connection failed", slog.String("error", err.Error()))
 	}
 	defer postgres.Close() // Graceful shutdown will be implemented later
 
-	logger.LogAttrs(context.Background(), slog.LevelInfo, "postgres connection pool established")
+	logger.Info("postgres connection pool established")
 
 	redisClient, err := openRedis(cfg)
 	if err != nil {
-		logger.LogAttrs(context.Background(), jsonlog.LevelFatal, "redis connection failed",
-			slog.String("error", err.Error()))
-		os.Exit(1)
+		jsonlog.LogFatal(logger, "redis connection failed", slog.String("error", err.Error()))
 	}
 	defer redisClient.Close() // Graceful shutdown will be implemented later
 
-	logger.LogAttrs(context.Background(), slog.LevelInfo, "redis connection client established")
+	logger.Info("redis client connection established")
 
 	app := &application{
 		config:  cfg,
@@ -85,18 +90,17 @@ func main() {
 		WriteTimeout: 30 * time.Second,
 	}
 
-	logger.LogAttrs(context.Background(), slog.LevelInfo, "starting server",
+	logger.Info("starting server",
 		slog.String("addr", srv.Addr),
 		slog.String("env", cfg.environment))
 
 	if err = srv.ListenAndServe(); err != nil {
-		logger.LogAttrs(context.Background(), jsonlog.LevelFatal, "server failed",
-			slog.String("error", err.Error()))
-		os.Exit(1)
+		jsonlog.LogFatal(logger, "server failed", slog.String("error", err.Error()))
 	}
 }
 
-func loadConfig(cfg *config) {
+func loadConfig(v *validator.Validator) config {
+	var cfg config
 	// Server Settings
 	flag.IntVar(&cfg.port, "port", 4000, "API Server Port")
 	flag.StringVar(&cfg.environment, "env", "development", "Environment (development|staging|production)")
@@ -115,6 +119,24 @@ func loadConfig(cfg *config) {
 	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
 
 	flag.Parse()
+
+	v.Check(cfg.port > 0 && cfg.port <= 65535, "port", "must be between 0 and 65535")
+	v.Check(validator.PermittedValue(cfg.environment, "development", "staging", "production"), "env", "must be one of (development|staging|production)")
+
+	v.Check(validator.NotBlank(cfg.postgres.dsn), "postgres-dsn", "must be not blank")
+	v.Check(cfg.postgres.maxOpenConns > 0 && cfg.postgres.maxOpenConns <= 1000, "postgres-max-open-conns", "must be between 0 and 1000")
+
+	_, err := time.ParseDuration(cfg.postgres.maxIdleTime)
+	if err != nil {
+		v.AddError("postgres-max-idle-time", "must be a valid time")
+	}
+
+	v.Check(validator.NotBlank(cfg.redis.dsn), "redis-dsn", "must be not blank")
+
+	v.Check(cfg.limiter.rps > 0, "limiter-rps", "must be greater than 0")
+	v.Check(cfg.limiter.burst > 0, "limiter-burst", "must be greater than 0")
+
+	return cfg
 }
 
 // openPostgres creates a PostgreSQL pool of connections using the config's DSN

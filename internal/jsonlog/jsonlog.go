@@ -1,8 +1,10 @@
 package jsonlog
 
 import (
+	"context"
 	"io"
 	"log/slog"
+	"os"
 )
 
 const (
@@ -36,4 +38,12 @@ func New(out io.Writer, minLevel slog.Level) *slog.Logger {
 	})
 
 	return slog.New(handler)
+}
+
+// LogFatal is a helper function that logs a Level Fatal error using
+// slog.Logger and exits with code 1.
+func LogFatal(logger *slog.Logger, msg string, attrs ...slog.Attr) {
+	logger.LogAttrs(context.Background(), LevelFatal, msg,
+		attrs...)
+	os.Exit(1)
 }
