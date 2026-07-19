@@ -11,6 +11,7 @@ import (
 
 	"github.com/ItakawaM/greenlight/internal/data"
 	"github.com/ItakawaM/greenlight/internal/jsonlog"
+	"github.com/ItakawaM/greenlight/internal/limiter"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
@@ -36,9 +37,10 @@ type config struct {
 }
 
 type application struct {
-	config config
-	logger *slog.Logger
-	models *data.Models
+	config  config
+	logger  *slog.Logger
+	models  *data.Models
+	limiter *limiter.TokenBucketLimiter
 }
 
 func main() {
@@ -68,9 +70,10 @@ func main() {
 	logger.LogAttrs(context.Background(), slog.LevelInfo, "redis connection client established")
 
 	app := &application{
-		config: cfg,
-		logger: logger,
-		models: data.NewModels(postgres),
+		config:  cfg,
+		logger:  logger,
+		models:  data.NewModels(postgres),
+		limiter: limiter.New(redisClient, cfg.limiter.burst, cfg.limiter.rps),
 	}
 
 	srv := &http.Server{
