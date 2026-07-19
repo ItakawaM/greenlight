@@ -5,8 +5,7 @@ export
 BINARY_PATH ?= ./bin/api
 MAIN_PATH := ./cmd/api
 MIGRATIONS_PATH := ./migrations
-DATABASE_URL := postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@localhost:5432/$(POSTGRES_DB)?sslmode=disable
-# Change localhost later for production
+DATABASE_URL := postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=disable
 
 RUN_FLAGS = -port=$(PORT) -env=$(ENVIRONMENT) \
 	-db-max-open-conns=$(POSTGRES_MAX_OPEN_CONNS) -db-max-idle-time=$(POSTGRES_MAX_IDLE_TIME) \
