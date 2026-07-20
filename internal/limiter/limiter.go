@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -67,6 +68,7 @@ type TokenBucketLimiter struct {
 	client       *redis.Client
 	burst        int
 	rps          float64
+	mu           sync.RWMutex
 	scriptSHA    string
 	scriptLoaded bool
 }
@@ -81,18 +83,22 @@ func New(client *redis.Client, burst int, rps float64) *TokenBucketLimiter {
 }
 
 func (t *TokenBucketLimiter) ensureScriptLoaded(ctx context.Context) error {
-	if t.scriptLoaded {
+	t.mu.RLock()
+	loaded := t.scriptLoaded
+	t.mu.RUnlock()
+	if loaded {
 		return nil
 	}
 
-	// could potentially be a data race? not sure
 	sha, err := t.client.ScriptLoad(ctx, tokenBucketScript).Result()
 	if err != nil {
 		return err
 	}
 
+	t.mu.Lock()
 	t.scriptSHA = sha
 	t.scriptLoaded = true
+	t.mu.Unlock()
 
 	return nil
 }
@@ -106,7 +112,11 @@ func (t *TokenBucketLimiter) Allow(ctx context.Context, key string) (bool, float
 
 	now := float64(time.Now().UnixMicro()) / 1e6
 
-	result, err := t.client.EvalSha(ctx, t.scriptSHA, []string{key}, t.burst, t.rps, now).Result()
+	t.mu.RLock()
+	script := t.scriptSHA
+	t.mu.RUnlock()
+
+	result, err := t.client.EvalSha(ctx, script, []string{key}, t.burst, t.rps, now).Result()
 	if err != nil {
 		if !redis.HasErrorPrefix(err, "NOSCRIPT") {
 			return false, 0, 0, 0, fmt.Errorf("token bucket eval failed: %w", err)
@@ -116,7 +126,10 @@ func (t *TokenBucketLimiter) Allow(ctx context.Context, key string) (bool, float
 		if err != nil {
 			return false, 0, 0, 0, fmt.Errorf("token bucket eval failed: %w", err)
 		}
+
+		t.mu.Lock()
 		t.scriptLoaded = false
+		t.mu.Unlock()
 	}
 
 	// res is []interface{}: [allowed int64, tokens int64, retry_after string, reset_after string]
