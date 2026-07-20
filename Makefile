@@ -2,23 +2,29 @@ include .env
 
 export
 
-BINARY ?= api.exe
+BINARY_PATH ?= ./bin/api
 MAIN_PATH := ./cmd/api
 MIGRATIONS_PATH := ./migrations
-DATABASE_URL := postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@localhost:5432/$(POSTGRES_DB)?sslmode=disable
+
+POSTGRES_URL := postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=disable
+REDIS_URL := redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/0
+
+RUN_FLAGS = -port=$(SERVER_PORT) -env=$(SERVER_ENVIRONMENT) \
+	-postgres-max-open-conns=$(POSTGRES_MAX_OPEN_CONNS) -postgres-max-idle-time=$(POSTGRES_MAX_IDLE_TIME) \
+	-limiter-rps=$(LIMITER_RPS) -limiter-burst=$(LIMITER_BURST) -limiter-enabled=$(LIMITER_ENABLED)
 
 .DEFAULT_GOAL := help
 
 .PHONY: run build build-run compose-up compose-up-rebuild compose-down migrate-up migrate-down clean test help
 
 run:
-	go run $(MAIN_PATH) -port=$(PORT) -env=$(ENVIRONMENT)
+	go run $(MAIN_PATH) $(RUN_FLAGS)
 
 build:
-	go build -o ./bin/$(BINARY) $(MAIN_PATH)
+	go build -o $(BINARY_PATH) $(MAIN_PATH)
 
 build-run: build
-	./bin/$(BINARY) -port=$(PORT) -env=$(ENVIRONMENT)
+	$(BINARY_PATH) $(RUN_FLAGS)
 
 compose-up:
 	docker compose up -d
@@ -30,17 +36,17 @@ compose-down:
 	docker compose down
 
 migrate-up:
-	migrate -path=$(MIGRATIONS_PATH) -database="$(DATABASE_URL)" up
+	migrate -path=$(MIGRATIONS_PATH) -database="$(POSTGRES_URL)" up
 
 migrate-down:
-	migrate -path=$(MIGRATIONS_PATH) -database="$(DATABASE_URL)" down
+	migrate -path=$(MIGRATIONS_PATH) -database="$(POSTGRES_URL)" down
 
 test:
 	go test ./... -v
 
 clean:
 	@echo "Cleaning up..."
-	@rm -f ./bin/$(BINARY)
+	@rm -f $(BINARY_PATH)
 	@go clean
 	@echo "Done!"
 
