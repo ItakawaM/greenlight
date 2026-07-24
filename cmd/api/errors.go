@@ -10,7 +10,7 @@ import (
 
 // logError writes an error to application's standard error logger
 // and records metadata about the request.
-func (app *application) logError(r *http.Request, err error, attrs ...slog.Attr) {
+func (app *application) logRequestError(r *http.Request, err error, attrs ...slog.Attr) {
 	all := make([]slog.Attr, 0, len(attrs)+2)
 	all = append(all,
 		slog.String("request_method", r.Method),
@@ -26,14 +26,14 @@ func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, st
 	env := envelope{"error": message}
 
 	if err := app.writeJSON(w, status, env, nil); err != nil {
-		app.logError(r, err)
+		app.logRequestError(r, err)
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
 
 // serverErrorResponse logs the provided error and sends a default 500 JSON response.
 func (app *application) serverErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
-	app.logError(r, err)
+	app.logRequestError(r, err)
 
 	message := "the server encountered a problem and could not process your request"
 	app.errorResponse(w, r, http.StatusInternalServerError, message)

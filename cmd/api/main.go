@@ -3,9 +3,7 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"time"
 
@@ -81,20 +79,7 @@ func main() {
 		limiter: limiter.New(redisClient, cfg.limiter.burst, cfg.limiter.rps),
 	}
 
-	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%d", app.config.port),
-		Handler:      app.routes(),
-		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelError),
-		IdleTimeout:  time.Minute,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 30 * time.Second,
-	}
-
-	logger.Info("starting server",
-		slog.String("addr", srv.Addr),
-		slog.String("env", cfg.environment))
-
-	if err = srv.ListenAndServe(); err != nil {
+	if err = app.serve(); err != nil {
 		jsonlog.LogFatal(logger, "server failed", slog.String("error", err.Error()))
 	}
 }
