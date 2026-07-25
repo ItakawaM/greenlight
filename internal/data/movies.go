@@ -41,12 +41,12 @@ type MovieModelInterface interface {
 
 	// Update persists changes to an existing movie record, using the
 	// movie's Version field for optimistic concurrency control.
-	// It returns ErrEditConflict if the record was modified concurrently
+	// Returns ErrEditConflict if the record was modified concurrently
 	// since it was last read.
 	Update(ctx context.Context, movie *Movie) error
 
 	// Delete removes the movie record with the given ID.
-	// It returns ErrRecordNotFound if no movie with that ID exists.
+	// Returns ErrRecordNotFound if no movie with that ID exists.
 	Delete(ctx context.Context, id int64) error
 }
 
@@ -139,15 +139,17 @@ func (m *MovieModel) Update(ctx context.Context, movie *Movie) error {
 		WHERE id = $5 AND version = $6
 		RETURNING version;`
 
-	err := m.db.QueryRow(ctx, statement, movie.Title, movie.Year, movie.Runtime, movie.Genres, movie.ID, movie.Version).
-		Scan(&movie.Version)
-
-	switch {
-	case errors.Is(err, pgx.ErrNoRows):
-		return ErrEditConflict
-	default:
-		return handleContextErrors(err)
+	if err := m.db.QueryRow(ctx, statement, movie.Title, movie.Year, movie.Runtime, movie.Genres, movie.ID, movie.Version).
+		Scan(&movie.Version); err != nil {
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			return ErrEditConflict
+		default:
+			return handleContextErrors(err)
+		}
 	}
+
+	return nil
 }
 
 // Delete implements MovieModelInterface.
