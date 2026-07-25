@@ -16,4 +16,8 @@ var (
 	// ErrCanceled is returned when a database query's context is canceled before completion.
 	// Example: client disconnected.
 	ErrCanceled = errors.New("db query canceled")
+
+	// ErrDuplicateEmail is returned during user creation when a user with the provided email
+	// already exists.
+	ErrDuplicateEmail = errors.New("duplicate email")
 )
