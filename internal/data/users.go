@@ -29,8 +29,20 @@ type User struct {
 
 // UserModelInterface defines the storage operations available for users.
 type UserModelInterface interface {
+	// Insert adds a new user record to the database; populates its
+	// ID, CreatedAt and Version fields on success.
+	// Returns ErrDuplicateEmail if a user with such an email already exists.
 	Insert(ctx context.Context, user *User) error
+
+	// GetByEmail retrieves a user record by its email.
+	// Returns ErrRecordNotFound if no user with that email exists.
 	GetByEmail(ctx context.Context, email string) (*User, error)
+
+	// Update persists changes to an existing user record, using the
+	// user's Version field for optimistic concurrency control.
+	// Returns ErrEditConflict if the record was modified concurrently
+	// since it was last read.
+	// Returns ErrDuplicateEmail if the new email breaks the unique constraint.
 	Update(ctx context.Context, user *User) error
 }
 
@@ -107,6 +119,7 @@ func (m *UserModel) Update(ctx context.Context, user *User) error {
 	return nil
 }
 
+// password is a wrapper type around plaintext and hashed password values.
 type password struct {
 	plaintext *string
 	hash      []byte

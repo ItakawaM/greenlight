@@ -41,12 +41,12 @@ type MovieModelInterface interface {
 
 	// Update persists changes to an existing movie record, using the
 	// movie's Version field for optimistic concurrency control.
-	// It returns ErrEditConflict if the record was modified concurrently
+	// Returns ErrEditConflict if the record was modified concurrently
 	// since it was last read.
 	Update(ctx context.Context, movie *Movie) error
 
 	// Delete removes the movie record with the given ID.
-	// It returns ErrRecordNotFound if no movie with that ID exists.
+	// Returns ErrRecordNotFound if no movie with that ID exists.
 	Delete(ctx context.Context, id int64) error
 }
 
