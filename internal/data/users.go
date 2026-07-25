@@ -35,7 +35,26 @@ type UserModel struct {
 	db *pgxpool.Pool
 }
 
+// Insert implements UserModelInterface.
 func (m *UserModel) Insert(ctx context.Context, user *User) error {
+	statement :=
+		`INSERT INTO users (name, email, password_hash, is_active)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, created_at, version;`
+
+	err := m.db.QueryRow(ctx, statement, user.Name, user.Email, user.Password.hash, user.IsActive).
+		Scan(&user.ID, &user.CreatedAt, &user.Version)
+
+	if err != nil {
+		switch {
+		case isUniqueViolationError(err, "users_email_key"):
+			return ErrDuplicateEmail
+
+		default:
+			return handleContextErrors(err)
+		}
+	}
+
 	return nil
 }
 
