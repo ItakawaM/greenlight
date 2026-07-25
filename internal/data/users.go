@@ -79,7 +79,28 @@ func (m *UserModel) GetByEmail(ctx context.Context, email string) (*User, error)
 	return &user, nil
 }
 
+// Update implements UserModelInterface.
 func (m *UserModel) Update(ctx context.Context, user *User) error {
+	statement :=
+		`UPDATE users
+		SET name = $1, email = $2, password_hash = $3, is_active = $4, version = version + 1
+		WHERE id = $5 AND version = $6
+		RETURNING version;`
+
+	if err := m.db.QueryRow(ctx, statement, user.Name, user.Email, user.Password.hash, user.IsActive, user.ID, user.Version).
+		Scan(&user.Version); err != nil {
+		switch {
+		case isUniqueViolationError(err, "users_email_key"):
+			return ErrDuplicateEmail
+
+		case errors.Is(err, pgx.ErrNoRows):
+			return ErrEditConflict
+
+		default:
+			return handleContextErrors(err)
+		}
+	}
+
 	return nil
 }
 
