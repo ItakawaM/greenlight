@@ -8,6 +8,7 @@ import (
 	"unicode"
 
 	"github.com/ItakawaM/greenlight/internal/validator"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -42,10 +43,8 @@ func (m *UserModel) Insert(ctx context.Context, user *User) error {
 		VALUES ($1, $2, $3, $4)
 		RETURNING id, created_at, version;`
 
-	err := m.db.QueryRow(ctx, statement, user.Name, user.Email, user.Password.hash, user.IsActive).
-		Scan(&user.ID, &user.CreatedAt, &user.Version)
-
-	if err != nil {
+	if err := m.db.QueryRow(ctx, statement, user.Name, user.Email, user.Password.hash, user.IsActive).
+		Scan(&user.ID, &user.CreatedAt, &user.Version); err != nil {
 		switch {
 		case isUniqueViolationError(err, "users_email_key"):
 			return ErrDuplicateEmail
@@ -58,8 +57,26 @@ func (m *UserModel) Insert(ctx context.Context, user *User) error {
 	return nil
 }
 
+// GetByEmail implements UserModelInterface.
 func (m *UserModel) GetByEmail(ctx context.Context, email string) (*User, error) {
-	return nil, nil
+	statement :=
+		`SELECT id, created_at, name, email, password_hash, is_active, version
+		FROM users
+		WHERE email = $1;`
+
+	var user User
+	if err := m.db.QueryRow(ctx, statement, email).
+		Scan(&user.ID, &user.CreatedAt, &user.Name, &user.Email, &user.Password.hash, &user.IsActive, &user.Version); err != nil {
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			return nil, ErrRecordNotFound
+
+		default:
+			return nil, handleContextErrors(err)
+		}
+	}
+
+	return &user, nil
 }
 
 func (m *UserModel) Update(ctx context.Context, user *User) error {
