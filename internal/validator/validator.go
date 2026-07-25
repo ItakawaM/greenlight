@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"unicode/utf8"
 )
 
 // EmailRX is a standardized regular expression for emails.
@@ -48,6 +49,16 @@ func NotBlank(value string) bool {
 // PermittedValue checks if the provided value is allowed.
 func PermittedValue[T comparable](value T, permittedValues ...T) bool {
 	return slices.Contains(permittedValues, value)
+}
+
+// MaxChars checks if the provided value has a max of n runes.
+func MaxChars(value string, n int) bool {
+	return utf8.RuneCountInString(value) <= n
+}
+
+// MaxChars checks if the provided value has a min of n runes.
+func MinChars(value string, n int) bool {
+	return utf8.RuneCountInString(value) >= n
 }
 
 // Matches checks if the provided value matches the regular expression.
