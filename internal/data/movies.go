@@ -139,15 +139,17 @@ func (m *MovieModel) Update(ctx context.Context, movie *Movie) error {
 		WHERE id = $5 AND version = $6
 		RETURNING version;`
 
-	err := m.db.QueryRow(ctx, statement, movie.Title, movie.Year, movie.Runtime, movie.Genres, movie.ID, movie.Version).
-		Scan(&movie.Version)
-
-	switch {
-	case errors.Is(err, pgx.ErrNoRows):
-		return ErrEditConflict
-	default:
-		return handleContextErrors(err)
+	if err := m.db.QueryRow(ctx, statement, movie.Title, movie.Year, movie.Runtime, movie.Genres, movie.ID, movie.Version).
+		Scan(&movie.Version); err != nil {
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			return ErrEditConflict
+		default:
+			return handleContextErrors(err)
+		}
 	}
+
+	return nil
 }
 
 // Delete implements MovieModelInterface.

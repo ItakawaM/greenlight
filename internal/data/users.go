@@ -13,6 +13,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// emailUniqueConstraint is a unique constraint for users' emails in Postgres.
+const emailUniqueConstraint = "users_email_key"
+
 // User represents a single user record in the application.
 type User struct {
 	ID        int64     `json:"id"`
@@ -46,7 +49,7 @@ func (m *UserModel) Insert(ctx context.Context, user *User) error {
 	if err := m.db.QueryRow(ctx, statement, user.Name, user.Email, user.Password.hash, user.IsActive).
 		Scan(&user.ID, &user.CreatedAt, &user.Version); err != nil {
 		switch {
-		case isUniqueViolationError(err, "users_email_key"):
+		case isUniqueViolationError(err, emailUniqueConstraint):
 			return ErrDuplicateEmail
 
 		default:
@@ -90,7 +93,7 @@ func (m *UserModel) Update(ctx context.Context, user *User) error {
 	if err := m.db.QueryRow(ctx, statement, user.Name, user.Email, user.Password.hash, user.IsActive, user.ID, user.Version).
 		Scan(&user.Version); err != nil {
 		switch {
-		case isUniqueViolationError(err, "users_email_key"):
+		case isUniqueViolationError(err, emailUniqueConstraint):
 			return ErrDuplicateEmail
 
 		case errors.Is(err, pgx.ErrNoRows):
