@@ -40,7 +40,16 @@ func (app *application) serve() error {
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
 
-			shutdownErr <- srv.Shutdown(ctx)
+			if err := srv.Shutdown(ctx); err != nil {
+				shutdownErr <- err
+				return
+			}
+
+			app.logger.Info("completing background tasks")
+
+			// wait for all background goroutines
+			app.wg.Wait()
+			shutdownErr <- nil
 
 		case <-done:
 			// server already stopped on its own

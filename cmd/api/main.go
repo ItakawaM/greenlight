@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/ItakawaM/greenlight/internal/data"
@@ -50,6 +51,7 @@ type application struct {
 	models  *data.Models
 	limiter *limiter.TokenBucketLimiter
 	mailer  *mailer.Mailer
+	wg      sync.WaitGroup
 }
 
 func main() {
