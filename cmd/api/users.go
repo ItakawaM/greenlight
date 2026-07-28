@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -55,7 +56,25 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if err := app.writeJSON(w, http.StatusCreated, envelope{"user": user}, nil); err != nil {
+	token, err := app.models.Tokens.New(ctx, user.ID, 72*time.Hour, data.ScopeActivation)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	app.background(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := app.mailer.Send(ctx, "user_welcome.tmpl.html", map[string]string{
+			"name": user.Name, "activationToken": token.Plaintext,
+		}, user.Email); err != nil {
+			app.logger.ErrorContext(ctx, "failed email delivery",
+				slog.String("error", err.Error()))
+		}
+	})
+
+	if err := app.writeJSON(w, http.StatusAccepted, envelope{"user": user}, nil); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }
