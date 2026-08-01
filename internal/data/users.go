@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"strings"
 	"time"
@@ -38,10 +39,13 @@ type UserModelInterface interface {
 	// Returns ErrRecordNotFound if no user with that email exists.
 	GetByEmail(ctx context.Context, email string) (*User, error)
 
+	// GetForToken retrieves a user that is associated with the provided token.
+	// Returns ErrRecordNotFound if no such user exists or the token is expired.
+	GetForToken(ctx context.Context, scope TokenScope, tokenPlaintext string) (*User, error)
+
 	// Update persists changes to an existing user record, using the
 	// user's Version field for optimistic concurrency control.
-	// Returns ErrEditConflict if the record was modified concurrently
-	// since it was last read.
+	// Returns ErrEditConflict if the record was modified concurrently since it was last read.
 	// Returns ErrDuplicateEmail if the new email breaks the unique constraint.
 	Update(ctx context.Context, user *User) error
 }
@@ -81,6 +85,34 @@ func (m *UserModel) GetByEmail(ctx context.Context, email string) (*User, error)
 
 	var user User
 	if err := m.db.QueryRow(ctx, statement, email).
+		Scan(&user.ID, &user.CreatedAt, &user.Name, &user.Email, &user.Password.hash, &user.IsActive, &user.Version); err != nil {
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			return nil, ErrRecordNotFound
+
+		default:
+			return nil, handleContextErrors(err)
+		}
+	}
+
+	return &user, nil
+}
+
+// GetForToken implements UserModelInterface.
+func (m *UserModel) GetForToken(ctx context.Context, scope TokenScope, tokenPlaintext string) (*User, error) {
+	tokenHash := sha256.Sum256([]byte(tokenPlaintext))
+
+	statement :=
+		`SELECT users.id, users.created_at, users.name, users.email, users.password_hash, users.is_active, users.version
+		FROM users
+		INNER JOIN tokens
+		ON users.id = tokens.user_id
+		WHERE tokens.hash = $1
+		AND tokens.scope = $2
+		AND tokens.expiry > $3;`
+
+	var user User
+	if err := m.db.QueryRow(ctx, statement, tokenHash[:], scope, time.Now()).
 		Scan(&user.ID, &user.CreatedAt, &user.Name, &user.Email, &user.Password.hash, &user.IsActive, &user.Version); err != nil {
 		switch {
 		case errors.Is(err, pgx.ErrNoRows):
