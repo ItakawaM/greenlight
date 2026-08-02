@@ -45,7 +45,9 @@ func (m *Models) WithTx(ctx context.Context, fn func(*Models) error) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 
 	if err := fn(newModels(tx, m.db)); err != nil {
 		return err
