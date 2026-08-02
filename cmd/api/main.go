@@ -124,12 +124,17 @@ func loadConfig(v *validator.Validator) config {
 	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
 
 	// SMTP Settings
-	flag.StringVar(&cfg.smtp.host, "smtp-host", os.Getenv("SMTP_HOST"), "SMTP host")
-	port, err := strconv.Atoi(os.Getenv("SMTP_PORT"))
-	if err != nil {
-		v.AddError("smtp-port", "must be an integer")
+	port := 0
+	var err error
+	if rawPort := os.Getenv("SMTP_PORT"); validator.NotBlank(rawPort) {
+		port, err = strconv.Atoi(rawPort)
+		if err != nil {
+			v.AddError("smtp-port", "must be an integer")
+		}
 	}
 	flag.IntVar(&cfg.smtp.port, "smtp-port", port, "SMTP port (25|465|587|2525)")
+
+	flag.StringVar(&cfg.smtp.host, "smtp-host", os.Getenv("SMTP_HOST"), "SMTP host")
 	flag.StringVar(&cfg.smtp.username, "smtp-username", os.Getenv("SMTP_USERNAME"), "SMTP username")
 	flag.StringVar(&cfg.smtp.password, "smtp-password", os.Getenv("SMTP_PASSWORD"), "SMTP password")
 	flag.StringVar(&cfg.smtp.from, "smtp-from", os.Getenv("SMTP_FROM"), "SMTP from")
