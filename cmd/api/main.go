@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"log/slog"
+	"net/mail"
 	"os"
 	"strconv"
 	"sync"
@@ -162,6 +163,9 @@ func loadConfig(v *validator.Validator) config {
 	v.Check(validator.NotBlank(cfg.smtp.username), "smtp-username", "must be not blank")
 	v.Check(validator.NotBlank(cfg.smtp.password), "smtp-password", "must be not blank")
 	v.Check(validator.NotBlank(cfg.smtp.from), "smtp-from", "must be not blank")
+
+	_, err = mail.ParseAddress(cfg.smtp.from)
+	v.Check(err == nil, "smtp-from", "must be a valid RFC 5322 named address")
 
 	return cfg
 }
