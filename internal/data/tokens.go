@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/ItakawaM/greenlight/internal/validator"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // TokenScope is a representation of a type of a token.
@@ -43,7 +42,7 @@ type TokenModelInterface interface {
 
 // TokenModel implements TokenModelInterface.
 type TokenModel struct {
-	db *pgxpool.Pool
+	db DBTX
 }
 
 // New implements TokenModelInterface.

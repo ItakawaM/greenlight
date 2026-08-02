@@ -8,7 +8,6 @@ import (
 
 	"github.com/ItakawaM/greenlight/internal/validator"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // Movie represents a single movie record in the application.
@@ -52,7 +51,7 @@ type MovieModelInterface interface {
 
 // MovieModel implements MovieModelInterface.
 type MovieModel struct {
-	db *pgxpool.Pool
+	db DBTX
 }
 
 // Insert implements MovieModelInterface.

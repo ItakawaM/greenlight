@@ -10,7 +10,6 @@ import (
 
 	"github.com/ItakawaM/greenlight/internal/validator"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -52,7 +51,7 @@ type UserModelInterface interface {
 
 // UserModel implements UserModelInterface.
 type UserModel struct {
-	db *pgxpool.Pool
+	db DBTX
 }
 
 // Insert implements UserModelInterface.
