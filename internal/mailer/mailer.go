@@ -96,7 +96,7 @@ func (m *Mailer) Send(ctx context.Context, templateFile string, data any, to ...
 		// we log the failed attempt
 		m.logger.WarnContext(ctx, "mailer: send attempt failed",
 			slog.Int("attempt", i),
-			slog.Any("to", to), // an array of users
+			slog.Int("recipient_count", len(to)), // non-PII
 			slog.String("error", sendErr.Error()))
 
 		// timer is not gc'ed correctly, so we initialize it outside of the select
