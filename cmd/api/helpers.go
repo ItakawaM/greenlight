@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"maps"
 	"net/http"
 	"net/url"
@@ -16,6 +17,20 @@ import (
 
 // envelope is a wrapper type for sending JSON responses.
 type envelope map[string]any
+
+// background is a wrapper around WaitGroup.Go() with panic recovery.
+func (app *application) background(fn func()) {
+	app.wg.Go(func() {
+		defer func() {
+			if err := recover(); err != nil {
+				app.logger.Error("background goroutine panic",
+					slog.Any("error", err))
+			}
+		}()
+
+		fn()
+	})
+}
 
 // readIDParam is a helper method that retrieves id from the request's path.
 func (app *application) readIDParam(r *http.Request) (int64, error) {
