@@ -55,6 +55,14 @@ type application struct {
 	wg      sync.WaitGroup
 }
 
+// @title           Greenlight API
+// @version         0.1.0
+// @description     A JSON REST API for retrieving and managing movie information, built while working through Let's Go Further by Alex Edwards.
+// @contact.name    API Support
+// @license.name    MIT
+// @license.url     https://github.com/ItakawaM/greenlight/blob/main/LICENSE
+//
+// @BasePath        /v1
 func main() {
 	logger := jsonlog.New(os.Stdout, slog.LevelInfo)
 

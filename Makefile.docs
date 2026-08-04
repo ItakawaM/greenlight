@@ -1,0 +1,22 @@
+DOCS_PATH := ./api/openapi
+SWAG_VERSION := v1.16.6
+REDOCLY_VERSION := 2.44.1
+
+.DEFAULT_GOAL := help
+
+.PHONY: docs-build help swag-install swagger
+
+swag-install:
+	go install github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION)
+
+swagger:
+	swag init -g main.go --dir ./cmd/api,./internal/data --output ./api/openapi --outputTypes json
+
+docs-build: swagger
+	npx --yes @redocly/cli@$(REDOCLY_VERSION) build-docs $(DOCS_PATH)/swagger.json -o $(DOCS_PATH)/index.html
+
+help:
+	@echo "Commands:"
+	@echo "  make swag-install  - Installs the swag CLI for generating API docs"
+	@echo "  make swagger       - Generates swagger.json from code annotations"
+	@echo "  make docs-build    - Generates swagger.json and builds static Redoc docs"

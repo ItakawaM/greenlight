@@ -10,6 +10,17 @@ import (
 	"github.com/ItakawaM/greenlight/internal/validator"
 )
 
+// @Summary      Create a movie
+// @Description  Creates a new movie record with the given title, year, runtime, and genres.
+// @Tags         movies
+// @Accept       json
+// @Produce      json
+// @Param        input  body  object{title=string,year=int32,runtime=int32,genres=[]string}  true  "Movie details"
+// @Success      201  "Movie created successfully"
+// @Failure      400  "Malformed request body"
+// @Failure      422  "Validation failed"
+// @Failure      500  "Server encountered a problem"
+// @Router       /movies [post]
 func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Title   string   `json:"title"`
@@ -52,6 +63,15 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// @Summary      Get a movie
+// @Description  Returns the details of a single movie by ID.
+// @Tags         movies
+// @Produce      json
+// @Param        id   path  int  true  "Movie ID"
+// @Success      200  "Movie found"
+// @Failure      404  "Movie not found"
+// @Failure      500  "Server encountered a problem"
+// @Router       /movies/{id} [get]
 func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDParam(r)
 	if err != nil {
@@ -73,6 +93,19 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 	}
 }
 
+// @Summary      List movies
+// @Description  Returns a paginated, filterable, sortable list of movies.
+// @Tags         movies
+// @Produce      json
+// @Param        title      query  string  false  "Filter by title (partial match)"
+// @Param        genres     query  string  false  "Filter by genres (comma-separated)"
+// @Param        page       query  int     false  "Page number"       default(1)
+// @Param        page_size  query  int     false  "Items per page"    default(20)
+// @Param        sort       query  string  false  "Sort field, prefix with - for descending. One of: id, title, year, runtime, -id, -title, -year, -runtime"  default(id)
+// @Success      200  "List of movies with pagination metadata"
+// @Failure      422  "Validation failed"
+// @Failure      500  "Server encountered a problem"
+// @Router       /movies [get]
 func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Title  string
@@ -111,6 +144,19 @@ func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// @Summary      Update a movie
+// @Description  Partially updates an existing movie. Only fields present in the request body are changed.
+// @Tags         movies
+// @Accept       json
+// @Produce      json
+// @Param        id     path  int                                                               true  "Movie ID"
+// @Param        input  body  object{title=string,year=int32,runtime=int32,genres=[]string}     true  "Fields to update"
+// @Success      200  "Movie updated successfully"
+// @Failure      400  "Malformed request body"
+// @Failure      404  "Movie not found"
+// @Failure      422  "Validation failed"
+// @Failure      500  "Server encountered a problem"
+// @Router       /movies/{id} [patch]
 func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDParam(r)
 	if err != nil {
@@ -171,6 +217,15 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// @Summary      Delete a movie
+// @Description  Permanently deletes a movie by ID.
+// @Tags         movies
+// @Produce      json
+// @Param        id   path  int  true  "Movie ID"
+// @Success      200  "Movie deleted successfully"
+// @Failure      404  "Movie not found"
+// @Failure      500  "Server encountered a problem"
+// @Router       /movies/{id} [delete]
 func (app *application) deleteMovieHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDParam(r)
 	if err != nil {

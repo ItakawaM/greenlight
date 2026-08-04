@@ -11,6 +11,17 @@ import (
 	"github.com/ItakawaM/greenlight/internal/validator"
 )
 
+// @Summary      Register a new user
+// @Description  Creates a new inactive user account and sends an activation email containing an activation token.
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Param        input  body  object{name=string,email=string,password=string}  true  "User registration details"
+// @Success      202  "User registered successfully. Activation email sent."
+// @Failure      400  "Malformed request body"
+// @Failure      422  "Validation failed or email already exists"
+// @Failure      500  "Server encountered a problem"
+// @Router       /users [post]
 func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Name     string `json:"name"`
@@ -89,6 +100,17 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// @Summary      Activate a user account
+// @Description  Activates a user account using a valid activation token. The activation token is deleted after successful activation.
+// @Tags         users
+// @Accept       json
+// @Produce      json
+// @Param        input  body  object{token=string}  true  "Activation token"
+// @Success      200  "User activated successfully"
+// @Failure      400  "Malformed request body"
+// @Failure      422  "Validation failed or activation token is invalid/expired"
+// @Failure      500  "Server encountered a problem"
+// @Router       /users/activate [put]
 func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		TokenPlaintext string `json:"token"`

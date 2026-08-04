@@ -1,0 +1,48 @@
+name: Generate API Docs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Install swag
+        run: make -f Makefile.docs swag-install
+
+      - name: Generate swagger.json
+        run: make -f Makefile.docs swagger
+
+      - name: Build Redoc static docs
+        run: make -f Makefile.docs docs-build
+
+      - name: Upload docs artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: api/openapi
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
