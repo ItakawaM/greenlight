@@ -19,13 +19,13 @@ jobs:
           go-version-file: go.mod
 
       - name: Install swag
-        run: make swag-install
+        run: make -f Makefile.docs swag-install
 
       - name: Generate swagger.json
-        run: make swagger
+        run: make -f Makefile.docs swagger
 
       - name: Build Redoc static docs
-        run: make docs-build
+        run: make -f Makefile.docs docs-build
 
       - name: Upload docs artifact
         uses: actions/upload-pages-artifact@v5
