@@ -16,11 +16,12 @@ import (
 // @Tags         users
 // @Accept       json
 // @Produce      json
-// @Param        input  body  object{name=string,email=string,password=string}  true  "User registration details"
-// @Success      202  "User registered successfully. Activation email sent."
-// @Failure      400  "Malformed request body"
-// @Failure      422  "Validation failed or email already exists"
-// @Failure      500  "Server encountered a problem"
+// @Param        input  body  CreateUserRequest  true  "User registration details"
+// @Success      202  {object} UserResponse  "User registered successfully. Activation email sent."
+// @Failure      400  {object} ErrorResponse  "Malformed request body"
+// @Failure      422  {object} ErrorResponse  "Validation failed or email already exists"
+// @Failure      500  {object} ErrorResponse  "Server encountered a problem"
+// @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /users [post]
 func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
 	req := CreateUserRequest{}
@@ -100,11 +101,12 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 // @Tags         users
 // @Accept       json
 // @Produce      json
-// @Param        input  body  object{token=string}  true  "Activation token"
-// @Success      200  "User activated successfully"
-// @Failure      400  "Malformed request body"
-// @Failure      422  "Validation failed or activation token is invalid/expired"
-// @Failure      500  "Server encountered a problem"
+// @Param        input  body  ActivateUserRequest  true  "Activation token"
+// @Success      200  {object} UserResponse   "User activated successfully"
+// @Failure      400  {object} ErrorResponse  "Malformed request body"
+// @Failure      422  {object} ErrorResponse  "Validation failed or activation token is invalid/expired"
+// @Failure      500  {object} ErrorResponse  "Server encountered a problem"
+// @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /users/activate [put]
 func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Request) {
 	req := ActivateUserRequest{}

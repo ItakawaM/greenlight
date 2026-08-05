@@ -15,11 +15,12 @@ import (
 // @Tags         movies
 // @Accept       json
 // @Produce      json
-// @Param        input  body  object{title=string,year=int32,runtime=int32,genres=[]string}  true  "Movie details"
-// @Success      201  "Movie created successfully"
-// @Failure      400  "Malformed request body"
-// @Failure      422  "Validation failed"
-// @Failure      500  "Server encountered a problem"
+// @Param        input  body  CreateMovieRequest  true  "Movie details"
+// @Success      201  {object} MovieResponse  "Movie created successfully"
+// @Failure      400  {object} ErrorResponse  "Malformed request body"
+// @Failure      422  {object} ErrorResponse  "Validation failed"
+// @Failure      500  {object} ErrorResponse  "Server encountered a problem"
+// @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies [post]
 func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Request) {
 	req := CreateMovieRequest{}
@@ -62,9 +63,10 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 // @Tags         movies
 // @Produce      json
 // @Param        id   path  int  true  "Movie ID"
-// @Success      200  "Movie found"
-// @Failure      404  "Movie not found"
-// @Failure      500  "Server encountered a problem"
+// @Success      200  {object} MovieResponse  "Movie found"
+// @Failure      404  {object} ErrorResponse  "Movie not found"
+// @Failure      500  {object} ErrorResponse  "Server encountered a problem"
+// @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies/{id} [get]
 func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDParam(r)
@@ -96,9 +98,10 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 // @Param        page       query  int     false  "Page number"       default(1)
 // @Param        page_size  query  int     false  "Items per page"    default(20)
 // @Param        sort       query  string  false  "Sort field, prefix with - for descending. One of: id, title, year, runtime, -id, -title, -year, -runtime"  default(id)
-// @Success      200  "List of movies with pagination metadata"
-// @Failure      422  "Validation failed"
-// @Failure      500  "Server encountered a problem"
+// @Success      200  {object} ListMovieResponse  "List of movies with pagination metadata"
+// @Failure      422  {object} ErrorResponse  "Validation failed"
+// @Failure      500  {object} ErrorResponse  "Server encountered a problem"
+// @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies [get]
 func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
@@ -144,12 +147,14 @@ func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request
 // @Accept       json
 // @Produce      json
 // @Param        id     path  int                                                               true  "Movie ID"
-// @Param        input  body  object{title=string,year=int32,runtime=int32,genres=[]string}     true  "Fields to update"
-// @Success      200  "Movie updated successfully"
-// @Failure      400  "Malformed request body"
-// @Failure      404  "Movie not found"
-// @Failure      422  "Validation failed"
-// @Failure      500  "Server encountered a problem"
+// @Param        input  body  UpdateMovieRequest     true  "Fields to update"
+// @Success      200  {object} MovieResponse  "Movie updated successfully"
+// @Failure      400  {object} ErrorResponse  "Malformed request body"
+// @Failure      404  {object} ErrorResponse  "Movie not found"
+// @Failure      409  {object} ErrorResponse  "Concurrent update conflict"
+// @Failure      422  {object} ErrorResponse  "Validation failed"
+// @Failure      500  {object} ErrorResponse  "Server encountered a problem"
+// @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies/{id} [patch]
 func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDParam(r)
@@ -210,9 +215,10 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 // @Tags         movies
 // @Produce      json
 // @Param        id   path  int  true  "Movie ID"
-// @Success      200  "Movie deleted successfully"
-// @Failure      404  "Movie not found"
-// @Failure      500  "Server encountered a problem"
+// @Success      200  {object} MessageResponse  "Movie deleted successfully"
+// @Failure      404  {object} ErrorResponse  "Movie not found"
+// @Failure      500  {object} ErrorResponse  "Server encountered a problem"
+// @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies/{id} [delete]
 func (app *application) deleteMovieHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDParam(r)

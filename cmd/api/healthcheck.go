@@ -5,13 +5,13 @@ import (
 )
 
 type SystemInfo struct {
-	Environment string `json:"environment"`
-	Version     string `json:"version"`
+	Environment string `json:"environment" example:"production"`
+	Version     string `json:"version" example:"v1.0.0"`
 }
 
 // HealthCheckResponse represents the response type for healthcheck.
 type HealthCheckResponse struct {
-	Status     string     `json:"status"`
+	Status     string     `json:"status" example:"available"`
 	SystemInfo SystemInfo `json:"system_info"`
 }
 
@@ -19,8 +19,8 @@ type HealthCheckResponse struct {
 // @Description  Returns the current operating status of the API, along with the running environment and application version.
 // @Tags         healthcheck
 // @Produce      json
-// @Success      200  "System is healthy"
-// @Failure      500  "Server error"
+// @Success      200  {object} HealthCheckResponse  "System is healthy"
+// @Failure      500  {object} ErrorResponse  "Server error"
 // @Router       /healthcheck [get]
 func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
 	resp := HealthCheckResponse{
