@@ -15,30 +15,25 @@ import (
 // @Tags         movies
 // @Accept       json
 // @Produce      json
-// @Param        input  body  object{title=string,year=int32,runtime=int32,genres=[]string}  true  "Movie details"
-// @Success      201  "Movie created successfully"
-// @Failure      400  "Malformed request body"
-// @Failure      422  "Validation failed"
-// @Failure      500  "Server encountered a problem"
+// @Param        input  body  CreateMovieRequest  true  "Movie details"
+// @Success      201  {object} MovieResponse  "Movie created successfully"
+// @Failure      400  {object} ErrorResponse  "Malformed request body"
+// @Failure      422  {object} ErrorResponse  "Validation failed"
+// @Failure      500  {object} ErrorResponse  "Server encountered a problem"
+// @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies [post]
 func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		Title   string   `json:"title"`
-		Year    int32    `json:"year"`
-		Runtime int32    `json:"runtime"`
-		Genres  []string `json:"genres"`
-	}
-
-	if err := app.readJSON(w, r, &input); err != nil {
+	req := CreateMovieRequest{}
+	if err := app.readJSON(w, r, &req); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
 
 	movie := &data.Movie{
-		Title:   input.Title,
-		Year:    input.Year,
-		Runtime: input.Runtime,
-		Genres:  input.Genres,
+		Title:   req.Title,
+		Year:    req.Year,
+		Runtime: req.Runtime,
+		Genres:  req.Genres,
 	}
 
 	v := validator.New()
@@ -58,7 +53,7 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 	headers := make(http.Header)
 	headers.Set("Location", fmt.Sprintf("/v1/movies/%d", movie.ID))
 
-	if err := app.writeJSON(w, http.StatusCreated, envelope{"movie": movie}, headers); err != nil {
+	if err := app.writeJSON(w, http.StatusCreated, MovieResponse{Movie: movie}, headers); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }
@@ -68,9 +63,10 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 // @Tags         movies
 // @Produce      json
 // @Param        id   path  int  true  "Movie ID"
-// @Success      200  "Movie found"
-// @Failure      404  "Movie not found"
-// @Failure      500  "Server encountered a problem"
+// @Success      200  {object} MovieResponse  "Movie found"
+// @Failure      404  {object} ErrorResponse  "Movie not found"
+// @Failure      500  {object} ErrorResponse  "Server encountered a problem"
+// @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies/{id} [get]
 func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDParam(r)
@@ -88,7 +84,7 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := app.writeJSON(w, http.StatusOK, envelope{"movie": movie}, nil); err != nil {
+	if err := app.writeJSON(w, http.StatusOK, MovieResponse{Movie: movie}, nil); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }
@@ -102,9 +98,10 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 // @Param        page       query  int     false  "Page number"       default(1)
 // @Param        page_size  query  int     false  "Items per page"    default(20)
 // @Param        sort       query  string  false  "Sort field, prefix with - for descending. One of: id, title, year, runtime, -id, -title, -year, -runtime"  default(id)
-// @Success      200  "List of movies with pagination metadata"
-// @Failure      422  "Validation failed"
-// @Failure      500  "Server encountered a problem"
+// @Success      200  {object} ListMovieResponse  "List of movies with pagination metadata"
+// @Failure      422  {object} ErrorResponse  "Validation failed"
+// @Failure      500  {object} ErrorResponse  "Server encountered a problem"
+// @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies [get]
 func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
@@ -139,7 +136,7 @@ func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := app.writeJSON(w, http.StatusOK, envelope{"movies": movies, "metadata": metadata}, nil); err != nil {
+	if err := app.writeJSON(w, http.StatusOK, ListMovieResponse{Movies: movies, Metadata: metadata}, nil); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }
@@ -150,12 +147,14 @@ func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request
 // @Accept       json
 // @Produce      json
 // @Param        id     path  int                                                               true  "Movie ID"
-// @Param        input  body  object{title=string,year=int32,runtime=int32,genres=[]string}     true  "Fields to update"
-// @Success      200  "Movie updated successfully"
-// @Failure      400  "Malformed request body"
-// @Failure      404  "Movie not found"
-// @Failure      422  "Validation failed"
-// @Failure      500  "Server encountered a problem"
+// @Param        input  body  UpdateMovieRequest     true  "Fields to update"
+// @Success      200  {object} MovieResponse  "Movie updated successfully"
+// @Failure      400  {object} ErrorResponse  "Malformed request body"
+// @Failure      404  {object} ErrorResponse  "Movie not found"
+// @Failure      409  {object} ErrorResponse  "Concurrent update conflict"
+// @Failure      422  {object} ErrorResponse  "Validation failed"
+// @Failure      500  {object} ErrorResponse  "Server encountered a problem"
+// @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies/{id} [patch]
 func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDParam(r)
@@ -173,32 +172,26 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	var input struct {
-		Title   *string  `json:"title"`
-		Year    *int32   `json:"year"`
-		Runtime *int32   `json:"runtime"`
-		Genres  []string `json:"genres"`
-	}
-
-	if err := app.readJSON(w, r, &input); err != nil {
+	req := UpdateMovieRequest{}
+	if err := app.readJSON(w, r, &req); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
 
-	if input.Title != nil {
-		movie.Title = *input.Title
+	if req.Title != nil {
+		movie.Title = *req.Title
 	}
 
-	if input.Year != nil {
-		movie.Year = *input.Year
+	if req.Year != nil {
+		movie.Year = *req.Year
 	}
 
-	if input.Runtime != nil {
-		movie.Runtime = *input.Runtime
+	if req.Runtime != nil {
+		movie.Runtime = *req.Runtime
 	}
 
-	if input.Genres != nil {
-		movie.Genres = input.Genres
+	if req.Genres != nil {
+		movie.Genres = req.Genres
 	}
 
 	v := validator.New()
@@ -212,7 +205,7 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := app.writeJSON(w, http.StatusOK, envelope{"movie": movie}, nil); err != nil {
+	if err := app.writeJSON(w, http.StatusOK, MovieResponse{Movie: movie}, nil); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }
@@ -222,9 +215,10 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 // @Tags         movies
 // @Produce      json
 // @Param        id   path  int  true  "Movie ID"
-// @Success      200  "Movie deleted successfully"
-// @Failure      404  "Movie not found"
-// @Failure      500  "Server encountered a problem"
+// @Success      200  {object} MessageResponse  "Movie deleted successfully"
+// @Failure      404  {object} ErrorResponse  "Movie not found"
+// @Failure      500  {object} ErrorResponse  "Server encountered a problem"
+// @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies/{id} [delete]
 func (app *application) deleteMovieHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDParam(r)
@@ -241,7 +235,7 @@ func (app *application) deleteMovieHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := app.writeJSON(w, http.StatusOK, envelope{"message": "movie successfully deleted"}, nil); err != nil {
+	if err := app.writeJSON(w, http.StatusOK, MessageResponse{Message: "movie successfully deleted"}, nil); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }

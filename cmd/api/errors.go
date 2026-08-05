@@ -8,6 +8,11 @@ import (
 	"github.com/ItakawaM/greenlight/internal/data"
 )
 
+// ErrorResponse represents a universal response type for errors.
+type ErrorResponse struct {
+	Error any `json:"error"`
+}
+
 // logError writes an error to application's standard error logger
 // and records metadata about the request.
 func (app *application) logRequestError(r *http.Request, err error, attrs ...slog.Attr) {
@@ -23,9 +28,11 @@ func (app *application) logRequestError(r *http.Request, err error, attrs ...slo
 
 // errorResponse sends a wrapped JSON error message with a provided status code.
 func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, status int, message any) {
-	env := envelope{"error": message}
+	resp := ErrorResponse{
+		Error: message,
+	}
 
-	if err := app.writeJSON(w, status, env, nil); err != nil {
+	if err := app.writeJSON(w, status, resp, nil); err != nil {
 		app.logRequestError(r, err)
 		w.WriteHeader(http.StatusInternalServerError)
 	}
