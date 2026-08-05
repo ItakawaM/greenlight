@@ -18,12 +18,12 @@ const emailUniqueConstraint = "users_email_key"
 
 // User represents a single user record in the application.
 type User struct {
-	ID        int64     `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	Name      string    `json:"name"`
-	Email     string    `json:"email"`
+	ID        int64     `json:"id" example:"1"`
+	CreatedAt time.Time `json:"created_at" example:"2026-01-01T00:00:00Z"`
+	Name      string    `json:"name" example:"Jane Doe"`
+	Email     string    `json:"email" example:"jane@example.com"`
 	Password  password  `json:"-"`
-	IsActive  bool      `json:"is_active"`
+	IsActive  bool      `json:"is_active" example:"true"`
 	Version   int       `json:"-"`
 }
 

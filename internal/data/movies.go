@@ -12,13 +12,13 @@ import (
 
 // Movie represents a single movie record in the application.
 type Movie struct {
-	ID        int64     `json:"id" db:"id"`
-	CreatedAt time.Time `json:"-" db:"created_at"`
-	Title     string    `json:"title" db:"title"`
-	Year      int32     `json:"year,omitempty" db:"year"`
-	Runtime   int32     `json:"runtime,omitempty" db:"runtime"`
-	Genres    []string  `json:"genres,omitempty" db:"genres"`
-	Version   int32     `json:"version" db:"version"`
+	ID        int64     `json:"id" example:"1"`
+	CreatedAt time.Time `json:"-"`
+	Title     string    `json:"title" example:"Blade Runner"`
+	Year      int32     `json:"year,omitempty" example:"1982"`
+	Runtime   int32     `json:"runtime,omitempty" example:"117"`
+	Genres    []string  `json:"genres,omitempty" example:"sci-fi,action"`
+	Version   int32     `json:"version" example:"1"`
 }
 
 // MovieModelInterface defines the storage operations available for movies.
