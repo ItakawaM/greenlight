@@ -23,24 +23,19 @@ import (
 // @Failure      500  "Server encountered a problem"
 // @Router       /users [post]
 func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		Name     string `json:"name"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
-
-	if err := app.readJSON(w, r, &input); err != nil {
+	req := CreateUserRequest{}
+	if err := app.readJSON(w, r, &req); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
 
 	user := &data.User{
-		Name:     input.Name,
-		Email:    input.Email,
+		Name:     req.Name,
+		Email:    req.Email,
 		IsActive: false,
 	}
 
-	if err := user.Password.Set(input.Password); err != nil {
+	if err := user.Password.Set(req.Password); err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
@@ -95,7 +90,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		}
 	})
 
-	if err := app.writeJSON(w, http.StatusAccepted, envelope{"user": user}, nil); err != nil {
+	if err := app.writeJSON(w, http.StatusAccepted, UserResponse{User: user}, nil); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }
@@ -112,18 +107,15 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 // @Failure      500  "Server encountered a problem"
 // @Router       /users/activate [put]
 func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		TokenPlaintext string `json:"token"`
-	}
-
-	if err := app.readJSON(w, r, &input); err != nil {
+	req := ActivateUserRequest{}
+	if err := app.readJSON(w, r, &req); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
 
 	v := validator.New()
 
-	if data.ValidateTokenPlaintext(v, input.TokenPlaintext); !v.Valid() {
+	if data.ValidateTokenPlaintext(v, req.TokenPlaintext); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
@@ -137,7 +129,7 @@ func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 	var user *data.User
 	if err := app.models.WithTx(ctx, func(m *data.Models) error {
 		var err error
-		user, err = m.Users.GetForToken(ctx, data.ScopeActivation, input.TokenPlaintext)
+		user, err = m.Users.GetForToken(ctx, data.ScopeActivation, req.TokenPlaintext)
 		if err != nil {
 			return err
 		}
@@ -164,7 +156,7 @@ func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if err := app.writeJSON(w, http.StatusOK, envelope{"user": user}, nil); err != nil {
+	if err := app.writeJSON(w, http.StatusOK, UserResponse{User: user}, nil); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }

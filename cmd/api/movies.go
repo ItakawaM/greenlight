@@ -22,23 +22,17 @@ import (
 // @Failure      500  "Server encountered a problem"
 // @Router       /movies [post]
 func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		Title   string   `json:"title"`
-		Year    int32    `json:"year"`
-		Runtime int32    `json:"runtime"`
-		Genres  []string `json:"genres"`
-	}
-
-	if err := app.readJSON(w, r, &input); err != nil {
+	req := CreateMovieRequest{}
+	if err := app.readJSON(w, r, &req); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
 
 	movie := &data.Movie{
-		Title:   input.Title,
-		Year:    input.Year,
-		Runtime: input.Runtime,
-		Genres:  input.Genres,
+		Title:   req.Title,
+		Year:    req.Year,
+		Runtime: req.Runtime,
+		Genres:  req.Genres,
 	}
 
 	v := validator.New()
@@ -58,7 +52,7 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 	headers := make(http.Header)
 	headers.Set("Location", fmt.Sprintf("/v1/movies/%d", movie.ID))
 
-	if err := app.writeJSON(w, http.StatusCreated, envelope{"movie": movie}, headers); err != nil {
+	if err := app.writeJSON(w, http.StatusCreated, MovieResponse{Movie: movie}, headers); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }
@@ -88,7 +82,7 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if err := app.writeJSON(w, http.StatusOK, envelope{"movie": movie}, nil); err != nil {
+	if err := app.writeJSON(w, http.StatusOK, MovieResponse{Movie: movie}, nil); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }
@@ -139,7 +133,7 @@ func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := app.writeJSON(w, http.StatusOK, envelope{"movies": movies, "metadata": metadata}, nil); err != nil {
+	if err := app.writeJSON(w, http.StatusOK, ListMovieResponse{Movies: movies, Metadata: metadata}, nil); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }
@@ -173,32 +167,26 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	var input struct {
-		Title   *string  `json:"title"`
-		Year    *int32   `json:"year"`
-		Runtime *int32   `json:"runtime"`
-		Genres  []string `json:"genres"`
-	}
-
-	if err := app.readJSON(w, r, &input); err != nil {
+	req := UpdateMovieRequest{}
+	if err := app.readJSON(w, r, &req); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
 	}
 
-	if input.Title != nil {
-		movie.Title = *input.Title
+	if req.Title != nil {
+		movie.Title = *req.Title
 	}
 
-	if input.Year != nil {
-		movie.Year = *input.Year
+	if req.Year != nil {
+		movie.Year = *req.Year
 	}
 
-	if input.Runtime != nil {
-		movie.Runtime = *input.Runtime
+	if req.Runtime != nil {
+		movie.Runtime = *req.Runtime
 	}
 
-	if input.Genres != nil {
-		movie.Genres = input.Genres
+	if req.Genres != nil {
+		movie.Genres = req.Genres
 	}
 
 	v := validator.New()
@@ -212,7 +200,7 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := app.writeJSON(w, http.StatusOK, envelope{"movie": movie}, nil); err != nil {
+	if err := app.writeJSON(w, http.StatusOK, MovieResponse{Movie: movie}, nil); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }
@@ -241,7 +229,7 @@ func (app *application) deleteMovieHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := app.writeJSON(w, http.StatusOK, envelope{"message": "movie successfully deleted"}, nil); err != nil {
+	if err := app.writeJSON(w, http.StatusOK, MessageResponse{Message: "movie successfully deleted"}, nil); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }

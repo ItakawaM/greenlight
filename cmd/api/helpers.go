@@ -15,8 +15,10 @@ import (
 	"github.com/ItakawaM/greenlight/internal/validator"
 )
 
-// envelope is a wrapper type for sending JSON responses.
-type envelope map[string]any
+// MessageResponse represents a simple response containing a single message.
+type MessageResponse struct {
+	Message string `json:"message"`
+}
 
 // background is a wrapper around WaitGroup.Go() with panic recovery.
 func (app *application) background(fn func()) {
@@ -80,7 +82,7 @@ func (app *application) readInt(qs url.Values, key string, defaultValue int, v *
 }
 
 // writeJSON is a helper method that writes a JSON response with the provided status code, data and headers.
-func (app *application) writeJSON(w http.ResponseWriter, status int, data envelope, headers http.Header) error {
+func (app *application) writeJSON(w http.ResponseWriter, status int, data any, headers http.Header) error {
 	js, err := json.MarshalIndent(data, "", "\t")
 	if err != nil {
 		return err
