@@ -19,9 +19,6 @@ RUN_FLAGS = -port=$(SERVER_PORT) -env=$(SERVER_ENVIRONMENT) \
 	build \
 	build-run \
 	clean \
-	compose-down \
-	compose-up \
-	compose-up-rebuild \
 	help \
 	migrate-down \
 	migrate-up \
@@ -36,15 +33,6 @@ build:
 
 build-run: build
 	$(BINARY_PATH) $(RUN_FLAGS)
-
-compose-up:
-	docker compose up -d
-
-compose-up-rebuild:
-	docker compose up -d --build
-
-compose-down:
-	docker compose down
 
 migrate-up:
 	migrate -path=$(MIGRATIONS_PATH) -database="$(POSTGRES_URL)" up
@@ -66,9 +54,6 @@ help:
 	@echo "  make run                 - Runs the API"
 	@echo "  make build               - Builds the API into an executable"
 	@echo "  make build-run           - Builds and runs the API executable"
-	@echo "  make compose-up          - Starts Docker Compose services"
-	@echo "  make compose-up-rebuild  - Rebuilds and starts Docker Compose services"
-	@echo "  make compose-down        - Stops Docker Compose services"
 	@echo "  make migrate-up          - Applies database migrations"
 	@echo "  make migrate-down        - Rolls back database migrations"
 	@echo "  make test                - Runs the test suite"
