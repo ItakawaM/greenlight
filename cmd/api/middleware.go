@@ -25,19 +25,19 @@ func (app *application) rateLimit(next http.Handler) http.Handler {
 				return
 			}
 
-			allowed, remaining, retryAfter, resetAfter, err := app.limiter.Allow(r.Context(), fmt.Sprintf("ip:%s", ip))
+			metadata, err := app.limiter.Allow(r.Context(), fmt.Sprintf("ip:%s", ip))
 			if err != nil {
 				app.serverErrorResponse(w, r, err)
 				return
 			}
 
 			w.Header().Set("X-RateLimit-Limit", strconv.Itoa(app.config.limiter.burst))
-			w.Header().Set("X-RateLimit-Remaining", strconv.FormatFloat(remaining, 'f', 0, 64))
+			w.Header().Set("X-RateLimit-Remaining", strconv.FormatFloat(metadata.Remaining, 'f', 0, 64))
 			w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(
-				time.Now().Add(time.Duration(resetAfter*float64(time.Second))).Unix(), 10))
+				time.Now().Add(time.Duration(metadata.ResetAfter*float64(time.Second))).Unix(), 10))
 
-			if !allowed {
-				w.Header().Set("Retry-After", strconv.FormatInt(int64(math.Ceil(retryAfter)), 10))
+			if !metadata.Allowed {
+				w.Header().Set("Retry-After", strconv.FormatInt(int64(math.Ceil(metadata.RetryAfter)), 10))
 				app.rateLimitExceededResponse(w, r)
 				return
 			}
