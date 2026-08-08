@@ -16,15 +16,18 @@ type TokenScope string
 const (
 	// ScopeActivation is used during account activation.
 	ScopeActivation TokenScope = "activation"
+
+	// ScopeAuthentication is used during user authentication.
+	ScopeAuthentication TokenScope = "authentication"
 )
 
 // Token represents a single token record in the application.
 type Token struct {
-	Plaintext string
-	Hash      []byte
-	UserID    int64
-	Expiry    time.Time
-	Scope     TokenScope
+	Plaintext string     `json:"token"`
+	Hash      []byte     `json:"-"`
+	UserID    int64      `json:"-"`
+	Expiry    time.Time  `json:"expiry"`
+	Scope     TokenScope `json:"-"`
 }
 
 // TokenModelInterface defines the storage operations available for tokens.
