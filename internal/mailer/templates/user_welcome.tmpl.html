@@ -18,24 +18,70 @@ The Greenlight Team
 
 {{define "htmlBody"}}
 <!doctype html>
-<html>
+<html lang="en">
 
 <head>
     <meta name="viewport" content="width=device-width" />
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Welcome to Greenlight</title>
 </head>
 
-<body>
-    <p>Hi, {{.name}}!</p>
-    <p>Thanks for signing up for a Greenlight account. We're excited to have you on board!</p>
-    <p>Please send a request to the <code>PUT /v1/users/activate</code> endpoint with the
-        following JSON body to activate your account:</p>
-    <pre><code>
-    {"token": "{{.activationToken}}"}
-    </code></pre>
-    <p>Please note that this is a one-time use token and it will expire in 3 days.</p>
-    <p>Thanks,</p>
-    <p>The Greenlight Team</p>
+<!-- body is not exactly supported everywhere, but with the new changes we achieve 95.3% Market Support on Mailtrap HTML Checker -->
+
+<body style="margin:0; padding:0; background-color:#f4f4f7;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f4f4f7"
+        style="background-color:#f4f4f7; margin:0; padding:0;">
+        <tr>
+            <td align="center" style="padding:32px 16px;">
+                <table role="presentation" width="480" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff"
+                    style="width:480px; max-width:100%; background-color:#ffffff;">
+                    <tr>
+                        <td
+                            style="padding:32px; font-family:Arial, Helvetica, sans-serif; color:#333333; font-size:15px; line-height:1.6;">
+
+                            <h1 style="margin:0 0 16px; font-size:20px; font-weight:bold; color:#1a7f37;">
+                                Welcome to Greenlight
+                            </h1>
+
+                            <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#333333;">
+                                Hi, {{.name}}!
+                            </p>
+
+                            <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#333333;">
+                                Thanks for signing up for a Greenlight account. We're excited to have you on board!
+                            </p>
+
+                            <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#333333;">
+                                Please send a request to the
+                                <code
+                                    style="background-color:#eef1f4; padding:2px 6px; font-family:'Courier New', Courier, monospace; font-size:13px; color:#333333;">PUT /v1/users/activate</code>
+                                endpoint with the following JSON body to activate your account:
+                            </p>
+
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                                bgcolor="#1e1e1e" style="background-color:#1e1e1e; margin:0 0 16px;">
+                                <tr>
+                                    <td
+                                        style="padding:16px; font-family:'Courier New', Courier, monospace; font-size:13px; line-height:1.5; color:#f4f4f4;">
+                                        {"token": "{{.activationToken}}"}
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin:0 0 16px; font-size:15px; line-height:1.6; color:#333333;">
+                                Please note that this is a one-time use token and it will expire in 3 days.
+                            </p>
+
+                            <p style="margin:24px 0 0; font-size:13px; line-height:1.6; color:#666666;">
+                                Thanks,<br>The Greenlight Team
+                            </p>
+
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 
 </html>

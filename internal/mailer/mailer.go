@@ -15,6 +15,9 @@ import (
 //go:embed "templates"
 var templateFS embed.FS
 
+// Not all of the styles are supported by mailing clients
+// so everything in templateFS needs to be optimized
+
 // Mailer is a wrapper struct around mail.Client
 // with sender defined and added logging.
 // It is used to send emails to users.
