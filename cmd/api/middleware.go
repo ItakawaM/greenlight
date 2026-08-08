@@ -25,14 +25,14 @@ func (app *application) rateLimit(next http.Handler) http.Handler {
 				return
 			}
 
-			metadata, err := app.limiter.Allow(r.Context(), fmt.Sprintf("ip:%s", ip))
+			metadata, err := app.limiter.Allow(r.Context(), "ip:"+ip)
 			if err != nil {
 				app.serverErrorResponse(w, r, err)
 				return
 			}
 
 			w.Header().Set("X-RateLimit-Limit", strconv.Itoa(app.config.limiter.burst))
-			w.Header().Set("X-RateLimit-Remaining", strconv.FormatFloat(metadata.Remaining, 'f', 0, 64))
+			w.Header().Set("X-RateLimit-Remaining", strconv.FormatInt(int64(math.Floor(metadata.Remaining)), 10))
 			w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(
 				time.Now().Add(time.Duration(metadata.ResetAfter*float64(time.Second))).Unix(), 10))
 

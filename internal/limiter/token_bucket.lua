@@ -17,12 +17,12 @@ if tokens == nil then
 end
 
 -- Calculate token refill
-local time_passed = now - last_refill
-local refills = math.floor(time_passed)
+local time_passed = math.max(0, now - last_refill)
+local refills = time_passed * rps
 
 if refills > 0 then
-    tokens = math.min(burst, tokens + (refills * rps))
-    last_refill = last_refill + refills
+    tokens = math.min(burst, tokens + refills)
+    last_refill = now
 end
 
 -- Try to consume a token
