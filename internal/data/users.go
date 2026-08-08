@@ -16,6 +16,9 @@ import (
 // emailUniqueConstraint is a unique constraint for users' emails in Postgres.
 const emailUniqueConstraint = "users_email_key"
 
+// AnonymousUser represents an unauthenticated user.
+var AnonymousUser = &User{}
+
 // User represents a single user record in the application.
 type User struct {
 	ID        int64     `json:"id" example:"1"`
@@ -25,6 +28,11 @@ type User struct {
 	Password  password  `json:"-"`
 	IsActive  bool      `json:"is_active" example:"true"`
 	Version   int       `json:"-"`
+}
+
+// IsAnonymous checks if the user instance is the AnonymousUser.
+func (u *User) IsAnonymous() bool {
+	return u == AnonymousUser
 }
 
 // UserModelInterface defines the storage operations available for users.

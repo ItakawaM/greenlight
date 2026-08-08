@@ -43,13 +43,20 @@ func (app *application) badRequestResponse(w http.ResponseWriter, r *http.Reques
 	app.errorResponse(w, r, http.StatusBadRequest, err.Error())
 }
 
-// invalidCredentialsResponse sends a default 401 JSON response.
+// invalidCredentialsResponse sends a 401 invalid credentials JSON response.
 func (app *application) invalidCredentialsResponse(w http.ResponseWriter, r *http.Request) {
 	message := "invalid authentication credentials"
 	app.errorResponse(w, r, http.StatusUnauthorized, message)
 }
 
-// notFoundResponse sends a default 404 JSON response.
+// invalidAuthenticationTokenResponse sends a 401 invalid authenticaton token JSON response.
+func (app *application) invalidAuthenticationTokenResponse(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("WWW-Authenticate", "Bearer")
+	message := "invalid or missing authentication token"
+	app.errorResponse(w, r, http.StatusUnauthorized, message)
+}
+
+// notFoundResponse sends a 404 JSON response.
 func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request) {
 	message := "the requested resource could not be found"
 	app.errorResponse(w, r, http.StatusNotFound, message)
@@ -73,7 +80,7 @@ func (app *application) rateLimitExceededResponse(w http.ResponseWriter, r *http
 	app.errorResponse(w, r, http.StatusTooManyRequests, message)
 }
 
-// serverErrorResponse logs the provided error and sends a default 500 JSON response.
+// serverErrorResponse logs the provided error and sends a 500 JSON response.
 func (app *application) serverErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
 	app.logRequestError(r, err)
 
