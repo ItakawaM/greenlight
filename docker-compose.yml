@@ -1,9 +1,10 @@
+name: greenlight
 services:
   postgres:
     image: postgres:18.4
     container_name: greenlight-postgres
     expose:
-      - ${POSTGRES_PORT:-5432}
+      - "5432"
     restart: unless-stopped
 
     environment:
@@ -28,7 +29,7 @@ services:
     image: greenlight-redis:8.8
     container_name: greenlight-redis
     expose:
-      - ${REDIS_PORT:-6379}
+      - "6379"
     restart: unless-stopped
 
     environment:
