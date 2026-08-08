@@ -19,6 +19,7 @@ RUN_FLAGS = -port=$(SERVER_PORT) -env=$(SERVER_ENVIRONMENT) \
 	build \
 	build-run \
 	clean \
+	db-shell \
 	help \
 	migrate-down \
 	migrate-up \
@@ -40,6 +41,9 @@ migrate-up:
 migrate-down:
 	migrate -path=$(MIGRATIONS_PATH) -database="$(POSTGRES_URL)" down
 
+db-shell:
+	docker exec -it greenlight-development-postgres psql $(POSTGRES_URL)
+
 test:
 	go test ./... -v
 
@@ -56,5 +60,6 @@ help:
 	@echo "  make build-run           - Builds and runs the API executable"
 	@echo "  make migrate-up          - Applies database migrations"
 	@echo "  make migrate-down        - Rolls back database migrations"
+	@echo "  make db-shell    		  - Starts greenlight-development-postgres psql"
 	@echo "  make test                - Runs the test suite"
 	@echo "  make clean               - Removes the compiled executable and cleans cache"
