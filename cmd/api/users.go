@@ -24,7 +24,7 @@ import (
 // @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /users [post]
 func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
-	req := CreateUserRequest{}
+	var req CreateUserRequest
 	if err := app.readJSON(w, r, &req); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
@@ -74,7 +74,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 			app.failedValidationResponse(w, r, v.Errors)
 
 		default:
-			app.handleModelError(w, r, err)
+			app.handleContextErrors(w, r, err)
 		}
 		return
 	}
@@ -109,7 +109,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 // @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /users/activate [put]
 func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Request) {
-	req := ActivateUserRequest{}
+	var req ActivateUserRequest
 	if err := app.readJSON(w, r, &req); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
@@ -152,8 +152,11 @@ func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 			v.AddError("token", "invalid or expired activation token")
 			app.failedValidationResponse(w, r, v.Errors)
 
+		case errors.Is(err, data.ErrEditConflict):
+			app.editConflictResponse(w, r)
+
 		default:
-			app.handleModelError(w, r, err)
+			app.handleContextErrors(w, r, err)
 		}
 		return
 	}

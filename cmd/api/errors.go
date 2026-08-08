@@ -81,21 +81,18 @@ func (app *application) serverErrorResponse(w http.ResponseWriter, r *http.Reque
 	app.errorResponse(w, r, http.StatusInternalServerError, message)
 }
 
-// handleModelError is a model independent error handler that should be used after
-// any model method. Checks for DB timeout, client cancellation, ordinary model errors and server errors.
-func (app *application) handleModelError(w http.ResponseWriter, r *http.Request, err error) {
+// handleContextErrors checks for DB timeout and client request cancellation.
+func (app *application) handleContextErrors(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, data.ErrTimeout):
 		app.errorResponse(w, r, http.StatusGatewayTimeout, "the server took too long to process your request")
+
 	case errors.Is(err, data.ErrCanceled):
 		app.logger.LogAttrs(r.Context(), slog.LevelInfo, "request canceled by client",
 			slog.String("request_method", r.Method),
 			slog.String("request_url", r.URL.RequestURI()),
 		)
-	case errors.Is(err, data.ErrRecordNotFound):
-		app.notFoundResponse(w, r)
-	case errors.Is(err, data.ErrEditConflict):
-		app.editConflictResponse(w, r)
+
 	default:
 		app.serverErrorResponse(w, r, err)
 	}

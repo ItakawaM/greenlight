@@ -58,7 +58,7 @@ func (app *application) createAuthenticationTokenHandler(w http.ResponseWriter, 
 			app.invalidCredentialsResponse(w, r)
 
 		default:
-			app.handleModelError(w, r, err)
+			app.handleContextErrors(w, r, err)
 		}
 		return
 	}

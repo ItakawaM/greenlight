@@ -18,6 +18,13 @@ type UpdateMovieRequest struct {
 	Genres  []string `json:"genres" example:"sci-fi,action"`
 }
 
+// ListMovieRequest represents url values for paginated movies listing.
+type ListMovieRequest struct {
+	Title  string
+	Genres []string
+	data.Filters
+}
+
 // MovieResponse represents a wrapped response containing a single movie object.
 type MovieResponse struct {
 	Movie *data.Movie `json:"movie"`

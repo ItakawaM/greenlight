@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -23,7 +24,7 @@ import (
 // @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies [post]
 func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Request) {
-	req := CreateMovieRequest{}
+	var req CreateMovieRequest
 	if err := app.readJSON(w, r, &req); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
@@ -46,7 +47,7 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 	defer cancel()
 
 	if err := app.models.Movies.Insert(ctx, movie); err != nil {
-		app.handleModelError(w, r, err)
+		app.handleContextErrors(w, r, err)
 		return
 	}
 
@@ -80,7 +81,13 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 
 	movie, err := app.models.Movies.Get(ctx, id)
 	if err != nil {
-		app.handleModelError(w, r, err)
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+
+		default:
+			app.handleContextErrors(w, r, err)
+		}
 		return
 	}
 
@@ -104,25 +111,21 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 // @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies [get]
 func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		Title  string
-		Genres []string
-		data.Filters
-	}
+	var req ListMovieRequest
 
 	v := validator.New()
 	qs := r.URL.Query()
 
-	input.Title = app.readString(qs, "title", "")
-	input.Genres = app.readCSV(qs, "genres", []string{})
+	req.Title = app.readString(qs, "title", "")
+	req.Genres = app.readCSV(qs, "genres", []string{})
 
-	input.Page = app.readInt(qs, "page", 1, v)
-	input.PageSize = app.readInt(qs, "page_size", 20, v)
+	req.Page = app.readInt(qs, "page", 1, v)
+	req.PageSize = app.readInt(qs, "page_size", 20, v)
 
-	input.Sort = app.readString(qs, "sort", "id")
-	input.SortSafeList = []string{"id", "title", "year", "runtime", "-id", "-title", "-year", "-runtime"}
+	req.Sort = app.readString(qs, "sort", "id")
+	req.SortSafeList = []string{"id", "title", "year", "runtime", "-id", "-title", "-year", "-runtime"}
 
-	if data.ValidateFilters(v, &input.Filters); !v.Valid() {
+	if data.ValidateFilters(v, &req.Filters); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
@@ -130,9 +133,9 @@ func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	movies, metadata, err := app.models.Movies.GetAll(ctx, input.Title, input.Genres, &input.Filters)
+	movies, metadata, err := app.models.Movies.GetAll(ctx, req.Title, req.Genres, &req.Filters)
 	if err != nil {
-		app.handleModelError(w, r, err)
+		app.handleContextErrors(w, r, err)
 		return
 	}
 
@@ -168,11 +171,17 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 
 	movie, err := app.models.Movies.Get(ctx, id)
 	if err != nil {
-		app.handleModelError(w, r, err)
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+
+		default:
+			app.handleContextErrors(w, r, err)
+		}
 		return
 	}
 
-	req := UpdateMovieRequest{}
+	var req UpdateMovieRequest
 	if err := app.readJSON(w, r, &req); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
@@ -201,7 +210,13 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := app.models.Movies.Update(ctx, movie); err != nil {
-		app.handleModelError(w, r, err)
+		switch {
+		case errors.Is(err, data.ErrEditConflict):
+			app.editConflictResponse(w, r)
+
+		default:
+			app.handleContextErrors(w, r, err)
+		}
 		return
 	}
 
@@ -231,7 +246,13 @@ func (app *application) deleteMovieHandler(w http.ResponseWriter, r *http.Reques
 	defer cancel()
 
 	if err := app.models.Movies.Delete(ctx, id); err != nil {
-		app.handleModelError(w, r, err)
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+
+		default:
+			app.handleContextErrors(w, r, err)
+		}
 		return
 	}
 
