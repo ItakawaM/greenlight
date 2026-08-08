@@ -17,7 +17,7 @@ services:
       - greenlight-network
 
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -41,7 +41,7 @@ services:
 
     healthcheck:
       # healthcheck to see if redis can write
-      test: [ "CMD-SHELL", "REDISCLI_AUTH=$REDIS_PASSWORD redis-cli --raw incr healthcheck" ]
+      test: [ "CMD-SHELL", "REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli --raw incr healthcheck" ]
       interval: 10s
       timeout: 5s
       retries: 5
