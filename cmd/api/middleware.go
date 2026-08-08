@@ -18,7 +18,7 @@ import (
 // authenticate is a middleware that checks the provided authorization token in the request
 // and stores the user in the context.
 // It stores AnonymousUser if no Authorization header is provided.
-// It errors with 401 if the Authorization header is malformed or the token is invalid.
+// It responds with 401 if the Authorization header is malformed or the token is invalid.
 func (app *application) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Vary", "Authorization")
@@ -62,6 +62,38 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 		r = app.contextSetUser(r, user)
 		next.ServeHTTP(w, r)
 	})
+}
+
+// requireAuthenticatedUser is a middleware that checks whether the user is authenticated.
+// It responds with 401 if the user is not authenticated.
+func (app *application) requireAuthenticatedUser(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := app.contextGetUser(r)
+
+		if user.IsAnonymous() {
+			app.authenticationRequiredResponse(w, r)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// requireActivatedUser is a middleware that checks whether the authenticated user is active.
+// It responds with 403 if the user is inactive.
+func (app *application) requireActivatedUser(next http.HandlerFunc) http.HandlerFunc {
+	fn := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user := app.contextGetUser(r)
+
+		if !user.IsActive {
+			app.inactiveAccountResponse(w, r)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+
+	return app.requireAuthenticatedUser(fn)
 }
 
 // rateLimit is a middleware that limits the amount of requests
