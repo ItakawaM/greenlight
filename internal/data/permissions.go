@@ -2,15 +2,18 @@ package data
 
 import (
 	"context"
-	"slices"
 )
 
-// Permissions represent user permission records in the application.
-type Permissions []string
+// Permission represents a single permission in the application.
+type Permission string
+
+// Permissions represent a collection of user permission records in the application.
+type Permissions map[Permission]struct{}
 
 // Include checks whether permissions contain code.
-func (p *Permissions) Include(code string) bool {
-	return slices.Contains(*p, code)
+func (p Permissions) Include(code Permission) bool {
+	_, ok := p[code]
+	return ok
 }
 
 // PermissionModelInterface defines the storage operations available for permissions.
@@ -39,14 +42,14 @@ func (m *PermissionModel) GetAllForUser(ctx context.Context, id int64) (Permissi
 	}
 	defer rows.Close()
 
-	var permissions Permissions
+	permissions := make(Permissions, 0)
 	for rows.Next() {
 		var permission string
 		if err := rows.Scan(&permission); err != nil {
 			return nil, err
 		}
 
-		permissions = append(permissions, permission)
+		permissions[Permission(permission)] = struct{}{}
 	}
 
 	if err := rows.Err(); err != nil {

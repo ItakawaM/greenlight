@@ -10,6 +10,14 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+const (
+	// MoviesReadPermission grants movies read permissions to a user.
+	MoviesReadPermission Permission = "movies:read"
+
+	// MoviesWritePermission grants movies write permissions to a user.
+	MoviesWritePermission Permission = "movies:write"
+)
+
 // Movie represents a single movie record in the application.
 type Movie struct {
 	ID        int64     `json:"id" example:"1"`
