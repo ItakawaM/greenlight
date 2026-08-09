@@ -96,9 +96,35 @@ func (app *application) requireActivatedUser(next http.HandlerFunc) http.Handler
 	return app.requireAuthenticatedUser(fn)
 }
 
+func (app *application) requirePermissions(next http.HandlerFunc, permissionCodes ...data.Permission) http.HandlerFunc {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		user := app.contextGetUser(r)
+
+		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+		defer cancel()
+
+		permissions, err := app.models.Permissions.GetAllForUser(ctx, user.ID)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
+
+		for i := range permissionCodes {
+			if !permissions.Include(permissionCodes[i]) {
+				app.notPermittedResponse(w, r)
+				return
+			}
+		}
+
+		next.ServeHTTP(w, r)
+	}
+
+	return app.requireActivatedUser(fn)
+}
+
 // rateLimit is a middleware that limits the amount of requests
 // a user from a single IP Address can do, implementing a token bucket algorithm.
-//
+// r
 // Configurable via .env and flags:
 //   - Requests per Minute
 //   - Burst requests

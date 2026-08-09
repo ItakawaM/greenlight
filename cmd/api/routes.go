@@ -1,6 +1,10 @@
 package main
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/ItakawaM/greenlight/internal/data"
+)
 
 // routes returns a serveMux with defined routes and middleware.
 func (app *application) routes() http.Handler {
@@ -13,11 +17,11 @@ func (app *application) routes() http.Handler {
 	mux.HandleFunc("GET /v1/healthcheck", app.healthcheckHandler)
 
 	// Movies API
-	mux.HandleFunc("POST /v1/movies", app.requireActivatedUser(app.createMovieHandler))
-	mux.HandleFunc("GET /v1/movies/{id}", app.requireActivatedUser(app.showMovieHandler))
-	mux.HandleFunc("GET /v1/movies", app.requireActivatedUser(app.listMoviesHandler))
-	mux.HandleFunc("PATCH /v1/movies/{id}", app.requireActivatedUser(app.updateMovieHandler))
-	mux.HandleFunc("DELETE /v1/movies/{id}", app.requireActivatedUser(app.deleteMovieHandler))
+	mux.HandleFunc("POST /v1/movies", app.requirePermissions(app.createMovieHandler, data.MoviesWritePermission))
+	mux.HandleFunc("GET /v1/movies/{id}", app.requirePermissions(app.showMovieHandler, data.MoviesReadPermission))
+	mux.HandleFunc("GET /v1/movies", app.requirePermissions(app.listMoviesHandler, data.MoviesReadPermission))
+	mux.HandleFunc("PATCH /v1/movies/{id}", app.requirePermissions(app.updateMovieHandler, data.MoviesWritePermission))
+	mux.HandleFunc("DELETE /v1/movies/{id}", app.requirePermissions(app.deleteMovieHandler, data.MoviesWritePermission))
 
 	// Users API
 	mux.HandleFunc("POST /v1/users", app.registerUserHandler)
