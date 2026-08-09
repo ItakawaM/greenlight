@@ -10,11 +10,11 @@ import (
 
 // Metadata represents pagination information that can be used by the client.
 type Metadata struct {
-	CurrentPage  int `json:"current_page,omitempty" example:"1"`
-	PageSize     int `json:"page_size,omitempty" example:"20"`
-	FirstPage    int `json:"first_page,omitempty" example:"1"`
-	LastPage     int `json:"last_page,omitempty" example:"5"`
-	TotalRecords int `json:"total_records,omitempty" example:"100"`
+	CurrentPage  int `json:"current_page" example:"1"`
+	PageSize     int `json:"page_size" example:"20"`
+	FirstPage    int `json:"first_page" example:"1"`
+	LastPage     int `json:"last_page" example:"5"`
+	TotalRecords int `json:"total_records" example:"100"`
 }
 
 // calculateMetadata creates a new Metadata object and calculates its LastPage.

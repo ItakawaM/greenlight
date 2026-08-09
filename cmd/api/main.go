@@ -63,6 +63,11 @@ type application struct {
 // @license.url     https://github.com/ItakawaM/greenlight/blob/main/LICENSE
 //
 // @BasePath        /v1
+//
+// @securityDefinitions.apikey  BearerAuth
+// @in                          header
+// @name                        Authorization
+// @description                 Stateful bearer token. Send as: Authorization: Bearer <token>
 func main() {
 	logger := jsonlog.New(os.Stdout, slog.LevelInfo)
 

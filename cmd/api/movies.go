@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -11,19 +12,24 @@ import (
 )
 
 // @Summary      Create a movie
-// @Description  Creates a new movie record with the given title, year, runtime, and genres.
+// @Description  Creates a new movie record with the given title, year, runtime, and genres. Requires the `movies:write` permission.
 // @Tags         movies
 // @Accept       json
 // @Produce      json
+// @Security     BearerAuth
+// @x-permission "movies:write"
 // @Param        input  body  CreateMovieRequest  true  "Movie details"
 // @Success      201  {object} MovieResponse  "Movie created successfully"
 // @Failure      400  {object} ErrorResponse  "Malformed request body"
+// @Failure      401  {object} ErrorResponse  "Authentication required"
+// @Failure      403  {object} ErrorResponse  "Permission denied"
 // @Failure      422  {object} ErrorResponse  "Validation failed"
+// @Failure 	 429  {object} ErrorResponse  "Too many requests"
 // @Failure      500  {object} ErrorResponse  "Server encountered a problem"
 // @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies [post]
 func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Request) {
-	req := CreateMovieRequest{}
+	var req CreateMovieRequest
 	if err := app.readJSON(w, r, &req); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
@@ -46,7 +52,7 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 	defer cancel()
 
 	if err := app.models.Movies.Insert(ctx, movie); err != nil {
-		app.handleModelError(w, r, err)
+		app.handleContextErrors(w, r, err)
 		return
 	}
 
@@ -59,12 +65,17 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 }
 
 // @Summary      Get a movie
-// @Description  Returns the details of a single movie by ID.
+// @Description  Returns the details of a single movie by ID. Requires the `movies:read` permission.
 // @Tags         movies
 // @Produce      json
-// @Param        id   path  int  true  "Movie ID"
+// @Security     BearerAuth
+// @x-permission "movies:read"
+// @Param        id  path  int  true  "Movie ID"  Format(int64)
 // @Success      200  {object} MovieResponse  "Movie found"
+// @Failure      401  {object} ErrorResponse  "Authentication required"
+// @Failure      403  {object} ErrorResponse  "Permission denied"
 // @Failure      404  {object} ErrorResponse  "Movie not found"
+// @Failure 	 429  {object} ErrorResponse  "Too many requests"
 // @Failure      500  {object} ErrorResponse  "Server encountered a problem"
 // @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies/{id} [get]
@@ -80,7 +91,13 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 
 	movie, err := app.models.Movies.Get(ctx, id)
 	if err != nil {
-		app.handleModelError(w, r, err)
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+
+		default:
+			app.handleContextErrors(w, r, err)
+		}
 		return
 	}
 
@@ -90,39 +107,40 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 }
 
 // @Summary      List movies
-// @Description  Returns a paginated, filterable, sortable list of movies.
+// @Description  Returns a paginated, filterable, sortable list of movies. Requires the `movies:read` permission.
 // @Tags         movies
 // @Produce      json
+// @Security     BearerAuth
+// @x-permission "movies:read"
 // @Param        title      query  string  false  "Filter by title (partial match)"
 // @Param        genres     query  string  false  "Filter by genres (comma-separated)"
 // @Param        page       query  int     false  "Page number"       default(1)
 // @Param        page_size  query  int     false  "Items per page"    default(20)
-// @Param        sort       query  string  false  "Sort field, prefix with - for descending. One of: id, title, year, runtime, -id, -title, -year, -runtime"  default(id)
+// @Param        sort       query  string  false  "Sort field, prefix with - for descending"  Enums(id, -id, title, -title, year, -year, runtime, -runtime)  default(id)
 // @Success      200  {object} ListMovieResponse  "List of movies with pagination metadata"
+// @Failure      401  {object} ErrorResponse  "Authentication required"
+// @Failure      403  {object} ErrorResponse  "Permission denied"
 // @Failure      422  {object} ErrorResponse  "Validation failed"
+// @Failure 	 429  {object} ErrorResponse  "Too many requests"
 // @Failure      500  {object} ErrorResponse  "Server encountered a problem"
 // @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies [get]
 func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		Title  string
-		Genres []string
-		data.Filters
-	}
+	var req ListMovieRequest
 
 	v := validator.New()
 	qs := r.URL.Query()
 
-	input.Title = app.readString(qs, "title", "")
-	input.Genres = app.readCSV(qs, "genres", []string{})
+	req.Title = app.readString(qs, "title", "")
+	req.Genres = app.readCSV(qs, "genres", []string{})
 
-	input.Page = app.readInt(qs, "page", 1, v)
-	input.PageSize = app.readInt(qs, "page_size", 20, v)
+	req.Page = app.readInt(qs, "page", 1, v)
+	req.PageSize = app.readInt(qs, "page_size", 20, v)
 
-	input.Sort = app.readString(qs, "sort", "id")
-	input.SortSafeList = []string{"id", "title", "year", "runtime", "-id", "-title", "-year", "-runtime"}
+	req.Sort = app.readString(qs, "sort", "id")
+	req.SortSafeList = []string{"id", "title", "year", "runtime", "-id", "-title", "-year", "-runtime"}
 
-	if data.ValidateFilters(v, &input.Filters); !v.Valid() {
+	if data.ValidateFilters(v, &req.Filters); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
@@ -130,9 +148,9 @@ func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	movies, metadata, err := app.models.Movies.GetAll(ctx, input.Title, input.Genres, &input.Filters)
+	movies, metadata, err := app.models.Movies.GetAll(ctx, req.Title, req.Genres, &req.Filters)
 	if err != nil {
-		app.handleModelError(w, r, err)
+		app.handleContextErrors(w, r, err)
 		return
 	}
 
@@ -142,17 +160,22 @@ func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request
 }
 
 // @Summary      Update a movie
-// @Description  Partially updates an existing movie. Only fields present in the request body are changed.
+// @Description  Partially updates an existing movie; only fields present in the request body are changed. Uses optimistic concurrency control — if the movie was modified by another request between read and write, the update is rejected with 409. Requires the `movies:write` permission.
 // @Tags         movies
 // @Accept       json
 // @Produce      json
-// @Param        id     path  int                                                               true  "Movie ID"
-// @Param        input  body  UpdateMovieRequest     true  "Fields to update"
+// @Security     BearerAuth
+// @x-permission "movies:write"
+// @Param        id     path  int                  true  "Movie ID"     Format(int64)
+// @Param        input  body  UpdateMovieRequest   true  "Fields to update"
 // @Success      200  {object} MovieResponse  "Movie updated successfully"
 // @Failure      400  {object} ErrorResponse  "Malformed request body"
+// @Failure      401  {object} ErrorResponse  "Authentication required"
+// @Failure      403  {object} ErrorResponse  "Permission denied"
 // @Failure      404  {object} ErrorResponse  "Movie not found"
 // @Failure      409  {object} ErrorResponse  "Concurrent update conflict"
 // @Failure      422  {object} ErrorResponse  "Validation failed"
+// @Failure 	 429  {object} ErrorResponse  "Too many requests"
 // @Failure      500  {object} ErrorResponse  "Server encountered a problem"
 // @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies/{id} [patch]
@@ -168,11 +191,17 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 
 	movie, err := app.models.Movies.Get(ctx, id)
 	if err != nil {
-		app.handleModelError(w, r, err)
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+
+		default:
+			app.handleContextErrors(w, r, err)
+		}
 		return
 	}
 
-	req := UpdateMovieRequest{}
+	var req UpdateMovieRequest
 	if err := app.readJSON(w, r, &req); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
@@ -201,7 +230,13 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := app.models.Movies.Update(ctx, movie); err != nil {
-		app.handleModelError(w, r, err)
+		switch {
+		case errors.Is(err, data.ErrEditConflict):
+			app.editConflictResponse(w, r)
+
+		default:
+			app.handleContextErrors(w, r, err)
+		}
 		return
 	}
 
@@ -211,12 +246,17 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 }
 
 // @Summary      Delete a movie
-// @Description  Permanently deletes a movie by ID.
+// @Description  Permanently deletes a movie by ID. Requires the `movies:write` permission.
 // @Tags         movies
 // @Produce      json
-// @Param        id   path  int  true  "Movie ID"
+// @Security     BearerAuth
+// @x-permission "movies:write"
+// @Param        id  path  int  true  "Movie ID"  Format(int64)
 // @Success      200  {object} MessageResponse  "Movie deleted successfully"
+// @Failure      401  {object} ErrorResponse  "Authentication required"
+// @Failure      403  {object} ErrorResponse  "Permission denied"
 // @Failure      404  {object} ErrorResponse  "Movie not found"
+// @Failure 	 429  {object} ErrorResponse  "Too many requests"
 // @Failure      500  {object} ErrorResponse  "Server encountered a problem"
 // @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies/{id} [delete]
@@ -231,7 +271,13 @@ func (app *application) deleteMovieHandler(w http.ResponseWriter, r *http.Reques
 	defer cancel()
 
 	if err := app.models.Movies.Delete(ctx, id); err != nil {
-		app.handleModelError(w, r, err)
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+
+		default:
+			app.handleContextErrors(w, r, err)
+		}
 		return
 	}
 

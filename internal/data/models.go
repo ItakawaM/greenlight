@@ -18,18 +18,20 @@ type DBTX interface {
 
 // Models represents a wrapped struct around all DB models.
 type Models struct {
-	Movies MovieModelInterface
-	Users  UserModelInterface
-	Tokens TokenModelInterface
-	db     *pgxpool.Pool
+	Movies      MovieModelInterface
+	Users       UserModelInterface
+	Tokens      TokenModelInterface
+	Permissions PermissionModelInterface
+	db          *pgxpool.Pool
 }
 
 func newModels(db DBTX, pool *pgxpool.Pool) *Models {
 	return &Models{
-		Movies: &MovieModel{db: db},
-		Users:  &UserModel{db: db},
-		Tokens: &TokenModel{db: db},
-		db:     pool,
+		Movies:      &MovieModel{db: db},
+		Users:       &UserModel{db: db},
+		Tokens:      &TokenModel{db: db},
+		Permissions: &PermissionModel{db: db},
+		db:          pool,
 	}
 }
 

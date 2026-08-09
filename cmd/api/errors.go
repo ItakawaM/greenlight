@@ -38,23 +38,47 @@ func (app *application) errorResponse(w http.ResponseWriter, r *http.Request, st
 	}
 }
 
-// serverErrorResponse logs the provided error and sends a default 500 JSON response.
-func (app *application) serverErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
-	app.logRequestError(r, err)
-
-	message := "the server encountered a problem and could not process your request"
-	app.errorResponse(w, r, http.StatusInternalServerError, message)
-}
-
-// notFoundResponse sends a default 404 JSON response.
-func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request) {
-	message := "the requested resource could not be found"
-	app.errorResponse(w, r, http.StatusNotFound, message)
-}
-
 // badRequestResponse sends a 400 JSON response with the provided error text.
 func (app *application) badRequestResponse(w http.ResponseWriter, r *http.Request, err error) {
 	app.errorResponse(w, r, http.StatusBadRequest, err.Error())
+}
+
+// invalidCredentialsResponse sends a 401 invalid credentials JSON response.
+func (app *application) invalidCredentialsResponse(w http.ResponseWriter, r *http.Request) {
+	message := "invalid authentication credentials"
+	app.errorResponse(w, r, http.StatusUnauthorized, message)
+}
+
+// invalidAuthenticationTokenResponse sends a 401 invalid authenticaton token JSON response.
+func (app *application) invalidAuthenticationTokenResponse(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("WWW-Authenticate", "Bearer")
+	message := "invalid or missing authentication token"
+	app.errorResponse(w, r, http.StatusUnauthorized, message)
+}
+
+// authenticationRequiredResponse sends a 401 missing authentication JSON response.
+func (app *application) authenticationRequiredResponse(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("WWW-Authenticate", "Bearer")
+	message := "you must be authenticated to access this resource"
+	app.errorResponse(w, r, http.StatusUnauthorized, message)
+}
+
+// notPermittedResponse sends a 403 missing permissions JSON response.
+func (app *application) notPermittedResponse(w http.ResponseWriter, r *http.Request) {
+	message := "your user account doesn't have the necessary permissions to access this resource"
+	app.errorResponse(w, r, http.StatusForbidden, message)
+}
+
+// inactiveAccountResponse sends a 403 inactive user JSON response.
+func (app *application) inactiveAccountResponse(w http.ResponseWriter, r *http.Request) {
+	message := "your user account must be activated to access this resource"
+	app.errorResponse(w, r, http.StatusForbidden, message)
+}
+
+// notFoundResponse sends a 404 JSON response.
+func (app *application) notFoundResponse(w http.ResponseWriter, r *http.Request) {
+	message := "the requested resource could not be found"
+	app.errorResponse(w, r, http.StatusNotFound, message)
 }
 
 // editConflictResponse sends a 409 JSON response signifying a conflict (example: data race).
@@ -75,21 +99,26 @@ func (app *application) rateLimitExceededResponse(w http.ResponseWriter, r *http
 	app.errorResponse(w, r, http.StatusTooManyRequests, message)
 }
 
-// handleModelError is a model independent error handler that should be used after
-// any model method. Checks for DB timeout, client cancellation, ordinary model errors and server errors.
-func (app *application) handleModelError(w http.ResponseWriter, r *http.Request, err error) {
+// serverErrorResponse logs the provided error and sends a 500 JSON response.
+func (app *application) serverErrorResponse(w http.ResponseWriter, r *http.Request, err error) {
+	app.logRequestError(r, err)
+
+	message := "the server encountered a problem and could not process your request"
+	app.errorResponse(w, r, http.StatusInternalServerError, message)
+}
+
+// handleContextErrors checks for DB timeout and client request cancellation.
+func (app *application) handleContextErrors(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, data.ErrTimeout):
 		app.errorResponse(w, r, http.StatusGatewayTimeout, "the server took too long to process your request")
+
 	case errors.Is(err, data.ErrCanceled):
 		app.logger.LogAttrs(r.Context(), slog.LevelInfo, "request canceled by client",
 			slog.String("request_method", r.Method),
 			slog.String("request_url", r.URL.RequestURI()),
 		)
-	case errors.Is(err, data.ErrRecordNotFound):
-		app.notFoundResponse(w, r)
-	case errors.Is(err, data.ErrEditConflict):
-		app.editConflictResponse(w, r)
+
 	default:
 		app.serverErrorResponse(w, r, err)
 	}

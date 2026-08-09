@@ -19,12 +19,14 @@ import (
 // @Param        input  body  CreateUserRequest  true  "User registration details"
 // @Success      202  {object} UserResponse  "User registered successfully. Activation email sent."
 // @Failure      400  {object} ErrorResponse  "Malformed request body"
+// @Failure      401  {object} ErrorResponse  "Invalid or malformed authorization header"
 // @Failure      422  {object} ErrorResponse  "Validation failed or email already exists"
+// @Failure 	 429  {object} ErrorResponse  "Too many requests"
 // @Failure      500  {object} ErrorResponse  "Server encountered a problem"
 // @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /users [post]
 func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Request) {
-	req := CreateUserRequest{}
+	var req CreateUserRequest
 	if err := app.readJSON(w, r, &req); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
@@ -48,7 +50,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
 	// we run user creation and token assignment in a transaction
@@ -58,6 +60,10 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	if err := app.models.WithTx(ctx, func(m *data.Models) error {
 		var err error
 		if err := m.Users.Insert(ctx, user); err != nil {
+			return err
+		}
+
+		if err := m.Permissions.EnsureUserPermissions(ctx, user.ID, data.MoviesReadPermission); err != nil {
 			return err
 		}
 
@@ -74,7 +80,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 			app.failedValidationResponse(w, r, v.Errors)
 
 		default:
-			app.handleModelError(w, r, err)
+			app.handleContextErrors(w, r, err)
 		}
 		return
 	}
@@ -104,12 +110,15 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 // @Param        input  body  ActivateUserRequest  true  "Activation token"
 // @Success      200  {object} UserResponse   "User activated successfully"
 // @Failure      400  {object} ErrorResponse  "Malformed request body"
+// @Failure      401  {object} ErrorResponse  "Invalid or malformed authorization header"
+// @Failure      409  {object} ErrorResponse  "Concurrent update conflict"
 // @Failure      422  {object} ErrorResponse  "Validation failed or activation token is invalid/expired"
+// @Failure 	 429  {object} ErrorResponse  "Too many requests"
 // @Failure      500  {object} ErrorResponse  "Server encountered a problem"
 // @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /users/activate [put]
 func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Request) {
-	req := ActivateUserRequest{}
+	var req ActivateUserRequest
 	if err := app.readJSON(w, r, &req); err != nil {
 		app.badRequestResponse(w, r, err)
 		return
@@ -152,8 +161,11 @@ func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 			v.AddError("token", "invalid or expired activation token")
 			app.failedValidationResponse(w, r, v.Errors)
 
+		case errors.Is(err, data.ErrEditConflict):
+			app.editConflictResponse(w, r)
+
 		default:
-			app.handleModelError(w, r, err)
+			app.handleContextErrors(w, r, err)
 		}
 		return
 	}

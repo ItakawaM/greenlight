@@ -16,6 +16,9 @@ import (
 // emailUniqueConstraint is a unique constraint for users' emails in Postgres.
 const emailUniqueConstraint = "users_email_key"
 
+// AnonymousUser represents an unauthenticated user.
+var AnonymousUser = &User{}
+
 // User represents a single user record in the application.
 type User struct {
 	ID        int64     `json:"id" example:"1"`
@@ -24,7 +27,12 @@ type User struct {
 	Email     string    `json:"email" example:"jane@example.com"`
 	Password  password  `json:"-"`
 	IsActive  bool      `json:"is_active" example:"true"`
-	Version   int       `json:"-"`
+	Version   int32     `json:"-"`
+}
+
+// IsAnonymous checks if the user instance is the AnonymousUser.
+func (u *User) IsAnonymous() bool {
+	return u == AnonymousUser
 }
 
 // UserModelInterface defines the storage operations available for users.
@@ -156,6 +164,9 @@ type password struct {
 	hash      []byte
 }
 
+// dummyHash is a dummy hash that is used when no user exists to mitigate timing-based side channel attacks.
+const dummyHash string = "$2a$12$CwTycUXWue0Thq9StjUM0uJ8dc4TeZWJKktSg1e8IALYtSAMhpTji"
+
 // Set sets the plaintext and hashed versions of the password.
 func (p *password) Set(plaintextPassword string) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(plaintextPassword), 12)
@@ -183,6 +194,11 @@ func (p *password) Matches(plaintextPassword string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// MatchDummyPassword is used when no user exists to mitigate timing-based side channel attacks.
+func MatchDummyPassword(plaintextPassword string) {
+	_ = bcrypt.CompareHashAndPassword([]byte(dummyHash), []byte(plaintextPassword))
 }
 
 // ValidateEmail checks whether the provided email is not empty and is valid.
