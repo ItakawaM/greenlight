@@ -12,14 +12,19 @@ import (
 )
 
 // @Summary      Create a movie
-// @Description  Creates a new movie record with the given title, year, runtime, and genres.
+// @Description  Creates a new movie record with the given title, year, runtime, and genres. Requires the `movies:write` permission.
 // @Tags         movies
 // @Accept       json
 // @Produce      json
+// @Security     BearerAuth
+// @x-permission "movies:write"
 // @Param        input  body  CreateMovieRequest  true  "Movie details"
 // @Success      201  {object} MovieResponse  "Movie created successfully"
 // @Failure      400  {object} ErrorResponse  "Malformed request body"
+// @Failure      401  {object} ErrorResponse  "Authentication required"
+// @Failure      403  {object} ErrorResponse  "Permission denied"
 // @Failure      422  {object} ErrorResponse  "Validation failed"
+// @Failure 	 429  {object} ErrorResponse  "Too many requests"
 // @Failure      500  {object} ErrorResponse  "Server encountered a problem"
 // @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies [post]
@@ -60,12 +65,17 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 }
 
 // @Summary      Get a movie
-// @Description  Returns the details of a single movie by ID.
+// @Description  Returns the details of a single movie by ID. Requires the `movies:read` permission.
 // @Tags         movies
 // @Produce      json
-// @Param        id   path  int  true  "Movie ID"
+// @Security     BearerAuth
+// @x-permission "movies:read"
+// @Param        id  path  int  true  "Movie ID"  Format(int64)
 // @Success      200  {object} MovieResponse  "Movie found"
+// @Failure      401  {object} ErrorResponse  "Authentication required"
+// @Failure      403  {object} ErrorResponse  "Permission denied"
 // @Failure      404  {object} ErrorResponse  "Movie not found"
+// @Failure 	 429  {object} ErrorResponse  "Too many requests"
 // @Failure      500  {object} ErrorResponse  "Server encountered a problem"
 // @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies/{id} [get]
@@ -97,16 +107,21 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 }
 
 // @Summary      List movies
-// @Description  Returns a paginated, filterable, sortable list of movies.
+// @Description  Returns a paginated, filterable, sortable list of movies. Requires the `movies:read` permission.
 // @Tags         movies
 // @Produce      json
+// @Security     BearerAuth
+// @x-permission "movies:read"
 // @Param        title      query  string  false  "Filter by title (partial match)"
 // @Param        genres     query  string  false  "Filter by genres (comma-separated)"
 // @Param        page       query  int     false  "Page number"       default(1)
 // @Param        page_size  query  int     false  "Items per page"    default(20)
-// @Param        sort       query  string  false  "Sort field, prefix with - for descending. One of: id, title, year, runtime, -id, -title, -year, -runtime"  default(id)
+// @Param        sort       query  string  false  "Sort field, prefix with - for descending"  Enums(id, -id, title, -title, year, -year, runtime, -runtime)  default(id)
 // @Success      200  {object} ListMovieResponse  "List of movies with pagination metadata"
+// @Failure      401  {object} ErrorResponse  "Authentication required"
+// @Failure      403  {object} ErrorResponse  "Permission denied"
 // @Failure      422  {object} ErrorResponse  "Validation failed"
+// @Failure 	 429  {object} ErrorResponse  "Too many requests"
 // @Failure      500  {object} ErrorResponse  "Server encountered a problem"
 // @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies [get]
@@ -145,17 +160,22 @@ func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request
 }
 
 // @Summary      Update a movie
-// @Description  Partially updates an existing movie. Only fields present in the request body are changed.
+// @Description  Partially updates an existing movie; only fields present in the request body are changed. Uses optimistic concurrency control — if the movie was modified by another request between read and write, the update is rejected with 409. Requires the `movies:write` permission.
 // @Tags         movies
 // @Accept       json
 // @Produce      json
-// @Param        id     path  int                                                               true  "Movie ID"
-// @Param        input  body  UpdateMovieRequest     true  "Fields to update"
+// @Security     BearerAuth
+// @x-permission "movies:write"
+// @Param        id     path  int                  true  "Movie ID"     Format(int64)
+// @Param        input  body  UpdateMovieRequest   true  "Fields to update"
 // @Success      200  {object} MovieResponse  "Movie updated successfully"
 // @Failure      400  {object} ErrorResponse  "Malformed request body"
+// @Failure      401  {object} ErrorResponse  "Authentication required"
+// @Failure      403  {object} ErrorResponse  "Permission denied"
 // @Failure      404  {object} ErrorResponse  "Movie not found"
 // @Failure      409  {object} ErrorResponse  "Concurrent update conflict"
 // @Failure      422  {object} ErrorResponse  "Validation failed"
+// @Failure 	 429  {object} ErrorResponse  "Too many requests"
 // @Failure      500  {object} ErrorResponse  "Server encountered a problem"
 // @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies/{id} [patch]
@@ -226,12 +246,17 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 }
 
 // @Summary      Delete a movie
-// @Description  Permanently deletes a movie by ID.
+// @Description  Permanently deletes a movie by ID. Requires the `movies:write` permission.
 // @Tags         movies
 // @Produce      json
-// @Param        id   path  int  true  "Movie ID"
+// @Security     BearerAuth
+// @x-permission "movies:write"
+// @Param        id  path  int  true  "Movie ID"  Format(int64)
 // @Success      200  {object} MessageResponse  "Movie deleted successfully"
+// @Failure      401  {object} ErrorResponse  "Authentication required"
+// @Failure      403  {object} ErrorResponse  "Permission denied"
 // @Failure      404  {object} ErrorResponse  "Movie not found"
+// @Failure 	 429  {object} ErrorResponse  "Too many requests"
 // @Failure      500  {object} ErrorResponse  "Server encountered a problem"
 // @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /movies/{id} [delete]

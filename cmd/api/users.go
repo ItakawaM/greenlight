@@ -19,7 +19,9 @@ import (
 // @Param        input  body  CreateUserRequest  true  "User registration details"
 // @Success      202  {object} UserResponse  "User registered successfully. Activation email sent."
 // @Failure      400  {object} ErrorResponse  "Malformed request body"
+// @Failure      403  {object} ErrorResponse  "Invalid or malformed authorization header"
 // @Failure      422  {object} ErrorResponse  "Validation failed or email already exists"
+// @Failure 	 429  {object} ErrorResponse  "Too many requests"
 // @Failure      500  {object} ErrorResponse  "Server encountered a problem"
 // @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /users [post]
@@ -108,7 +110,10 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 // @Param        input  body  ActivateUserRequest  true  "Activation token"
 // @Success      200  {object} UserResponse   "User activated successfully"
 // @Failure      400  {object} ErrorResponse  "Malformed request body"
+// @Failure      403  {object} ErrorResponse  "Invalid or malformed authorization header"
+// @Failure      409  {object} ErrorResponse  "Concurrent update conflict"
 // @Failure      422  {object} ErrorResponse  "Validation failed or activation token is invalid/expired"
+// @Failure 	 429  {object} ErrorResponse  "Too many requests"
 // @Failure      500  {object} ErrorResponse  "Server encountered a problem"
 // @Failure      504  {object} ErrorResponse  "Gateway timeout"
 // @Router       /users/activate [put]

@@ -10,6 +10,21 @@ import (
 	"github.com/ItakawaM/greenlight/internal/validator"
 )
 
+// @Summary      Create an authentication token
+// @Description  Creates a new authentication token for an existing user using their email and password.
+// @Tags         tokens
+// @Accept       json
+// @Produce      json
+// @Param        input  body  CreateAuthenticationTokenRequest  true  "Authentication credentials"
+// @Success      201  {object} CreateAuthenticationTokenResponse  "Authentication token created"
+// @Failure      400  {object} ErrorResponse  "Malformed request body"
+// @Failure      401  {object} ErrorResponse  "Invalid email or password"
+// @Failure      403  {object} ErrorResponse  "Invalid or malformed authorization header"
+// @Failure      422  {object} ErrorResponse  "Validation failed"
+// @Failure 	 429  {object} ErrorResponse  "Too many requests"
+// @Failure      500  {object} ErrorResponse  "Server encountered a problem"
+// @Failure      504  {object} ErrorResponse  "Gateway timeout"
+// @Router       /tokens/authentication [post]
 func (app *application) createAuthenticationTokenHandler(w http.ResponseWriter, r *http.Request) {
 	var req CreateAuthenticationTokenRequest
 	if err := app.readJSON(w, r, &req); err != nil {
