@@ -96,6 +96,8 @@ func (app *application) requireActivatedUser(next http.HandlerFunc) http.Handler
 	return app.requireAuthenticatedUser(fn)
 }
 
+// requirePermissions is a middleware that checks whether the authenticated user has all of the provided permissions.
+// It responds with 403 if at least one of the permissions is missing.
 func (app *application) requirePermissions(next http.HandlerFunc, permissionCodes ...data.Permission) http.HandlerFunc {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		user := app.contextGetUser(r)
@@ -105,7 +107,7 @@ func (app *application) requirePermissions(next http.HandlerFunc, permissionCode
 
 		permissions, err := app.models.Permissions.GetAllForUser(ctx, user.ID)
 		if err != nil {
-			app.serverErrorResponse(w, r, err)
+			app.handleContextErrors(w, r, err)
 			return
 		}
 
@@ -124,7 +126,7 @@ func (app *application) requirePermissions(next http.HandlerFunc, permissionCode
 
 // rateLimit is a middleware that limits the amount of requests
 // a user from a single IP Address can do, implementing a token bucket algorithm.
-// r
+//
 // Configurable via .env and flags:
 //   - Requests per Minute
 //   - Burst requests
