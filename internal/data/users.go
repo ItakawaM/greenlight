@@ -27,7 +27,7 @@ type User struct {
 	Email     string    `json:"email" example:"jane@example.com"`
 	Password  password  `json:"-"`
 	IsActive  bool      `json:"is_active" example:"true"`
-	Version   int       `json:"-"`
+	Version   int32     `json:"-"`
 }
 
 // IsAnonymous checks if the user instance is the AnonymousUser.

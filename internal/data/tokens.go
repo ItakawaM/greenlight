@@ -23,10 +23,10 @@ const (
 
 // Token represents a single token record in the application.
 type Token struct {
-	Plaintext string     `json:"token"`
+	Plaintext string     `json:"token" example:"QWERTYUIOPASDFGHJKLZXCVBNM"`
 	Hash      []byte     `json:"-"`
 	UserID    int64      `json:"-"`
-	Expiry    time.Time  `json:"expiry"`
+	Expiry    time.Time  `json:"expiry" example:"2026-01-01T00:00:00Z"`
 	Scope     TokenScope `json:"-"`
 }
 

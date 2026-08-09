@@ -23,9 +23,9 @@ type Movie struct {
 	ID        int64     `json:"id" example:"1"`
 	CreatedAt time.Time `json:"-"`
 	Title     string    `json:"title" example:"Blade Runner"`
-	Year      int32     `json:"year,omitempty" example:"1982"`
-	Runtime   int32     `json:"runtime,omitempty" example:"117"`
-	Genres    []string  `json:"genres,omitempty" example:"sci-fi,action"`
+	Year      int32     `json:"year" example:"1982"`
+	Runtime   int32     `json:"runtime" example:"117"`
+	Genres    []string  `json:"genres" example:"sci-fi,action"`
 	Version   int32     `json:"version" example:"1"`
 }
 
