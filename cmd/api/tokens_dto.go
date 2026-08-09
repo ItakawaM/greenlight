@@ -8,7 +8,7 @@ type CreateAuthenticationTokenRequest struct {
 	Password string `json:"password"`
 }
 
-// CreateAuthenticationTokenRequest represents a response object for authentication.
+// CreateAuthenticationTokenResponse represents a response object for authentication.
 type CreateAuthenticationTokenResponse struct {
 	AuthenticationToken *data.Token `json:"authentication_token"`
 }
