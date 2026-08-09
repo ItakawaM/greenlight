@@ -48,7 +48,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
 	// we run user creation and token assignment in a transaction
@@ -58,6 +58,10 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	if err := app.models.WithTx(ctx, func(m *data.Models) error {
 		var err error
 		if err := m.Users.Insert(ctx, user); err != nil {
+			return err
+		}
+
+		if err := m.Permissions.EnsureUserPermissions(ctx, user.ID, data.MoviesReadPermission); err != nil {
 			return err
 		}
 

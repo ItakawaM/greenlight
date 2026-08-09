@@ -20,6 +20,9 @@ func (p Permissions) Include(code Permission) bool {
 type PermissionModelInterface interface {
 	// GetAllForUser retrieves all permission codes for a specified user.
 	GetAllForUser(ctx context.Context, id int64) (Permissions, error)
+
+	// EnsureUserPermissions sets the provided user permissions.
+	EnsureUserPermissions(ctx context.Context, id int64, permissionCodes ...Permission) error
 }
 
 // PermissionModel implements PermissionModelInterface.
@@ -38,7 +41,7 @@ func (m *PermissionModel) GetAllForUser(ctx context.Context, id int64) (Permissi
 
 	rows, err := m.db.Query(ctx, statement, id)
 	if err != nil {
-		return nil, err
+		return nil, handleContextErrors(err)
 	}
 	defer rows.Close()
 
@@ -46,15 +49,26 @@ func (m *PermissionModel) GetAllForUser(ctx context.Context, id int64) (Permissi
 	for rows.Next() {
 		var permission string
 		if err := rows.Scan(&permission); err != nil {
-			return nil, err
+			return nil, handleContextErrors(err)
 		}
 
 		permissions[Permission(permission)] = struct{}{}
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, handleContextErrors(err)
 	}
 
 	return permissions, nil
+}
+
+// EnsureUserPermissions implements PermissionModelInterface.
+func (m *PermissionModel) EnsureUserPermissions(ctx context.Context, id int64, permissionCodes ...Permission) error {
+	statement :=
+		`INSERT INTO users_permissions
+		SELECT $1, permissions.id FROM permissions WHERE permissions.code = ANY($2)
+		ON CONFLICT DO NOTHING;`
+
+	_, err := m.db.Exec(ctx, statement, id, permissionCodes)
+	return handleContextErrors(err)
 }
