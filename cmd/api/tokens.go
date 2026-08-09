@@ -49,6 +49,13 @@ func (app *application) createAuthenticationTokenHandler(w http.ResponseWriter, 
 		var err error
 		user, err := m.Users.GetByEmail(ctx, req.Email)
 		if err != nil {
+			// if no user exists with the provided email
+			// we should still spend time "matching the hash" of the password
+			// to ensure that any timing-based side channel attacks are mitigated
+			if errors.Is(err, data.ErrRecordNotFound) {
+				data.MatchDummyPassword(req.Password)
+			}
+
 			return err
 		}
 

@@ -164,6 +164,9 @@ type password struct {
 	hash      []byte
 }
 
+// dummyHash is a dummy hash that is used when no user exists to mitigate timing-based side channel attacks.
+const dummyHash string = "$2a$12$CwTycUXWue0Thq9StjUM0uJ8dc4TeZWJKktSg1e8IALYtSAMhpTji"
+
 // Set sets the plaintext and hashed versions of the password.
 func (p *password) Set(plaintextPassword string) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(plaintextPassword), 12)
@@ -191,6 +194,11 @@ func (p *password) Matches(plaintextPassword string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// MatchDummyPassword is used when no user exists to mitigate timing-based side channel attacks.
+func MatchDummyPassword(plaintextPassword string) {
+	_ = bcrypt.CompareHashAndPassword([]byte(dummyHash), []byte(plaintextPassword))
 }
 
 // ValidateEmail checks whether the provided email is not empty and is valid.
