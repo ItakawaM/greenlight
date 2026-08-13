@@ -124,6 +124,32 @@ func (app *application) requirePermissions(next http.HandlerFunc, permissionCode
 	return app.requireActivatedUser(fn)
 }
 
+// enableCORS is a middleware that checks if the request is coming from a trusted origin.
+func (app *application) enableCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Vary", "Origin")
+		w.Header().Add("Vary", "Access-Control-Request-Method")
+
+		if origin := strings.TrimSpace(r.Header.Get("Origin")); origin != "" {
+			if _, ok := app.config.cors.trustedOrigins[origin]; ok {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+
+				// Check if the request is preflight
+				if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
+					w.Header().Set("Access-Control-Allow-Methods", "OPTIONS, PUT, PATCH, DELETE") // GET, HEAD and POST are CORS-friendly
+					w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+
+					// Return preflight request
+					w.WriteHeader(http.StatusOK)
+					return
+				}
+			}
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 // rateLimit is a middleware that limits the amount of requests
 // a user from a single IP Address can do, implementing a token bucket algorithm.
 //
