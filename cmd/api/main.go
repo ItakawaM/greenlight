@@ -75,6 +75,8 @@ func main() {
 
 	logger.Info("smtp client established")
 
+	publishGlobalMetrics(postgres, redisClient)
+
 	app := &application{
 		config:  cfg,
 		logger:  logger,

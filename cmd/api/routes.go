@@ -1,6 +1,7 @@
 package main
 
 import (
+	"expvar"
 	"net/http"
 
 	"github.com/ItakawaM/greenlight/internal/data"
@@ -13,6 +14,9 @@ func (app *application) routes() http.Handler {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		app.notFoundResponse(w, r)
 	})
+
+	// Metrics
+	mux.Handle("GET /v1/metrics", expvar.Handler())
 
 	mux.HandleFunc("GET /v1/healthcheck", app.healthcheckHandler)
 

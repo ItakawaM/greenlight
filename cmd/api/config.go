@@ -62,18 +62,7 @@ func loadConfig(v *validator.Validator) config {
 
 	// SMTP Settings
 	smtpPort := os.Getenv("SMTP_PORT")
-	var err error
 	flag.StringVar(&smtpPort, "smtp-port", smtpPort, "SMTP port (25|465|587|2525)")
-
-	flag.Parse()
-
-	if validator.NotBlank(smtpPort) {
-		cfg.smtp.port, err = strconv.Atoi(smtpPort)
-		if err != nil {
-			v.AddError("smtp-port", "must be an integer")
-		}
-	}
-
 	flag.StringVar(&cfg.smtp.host, "smtp-host", os.Getenv("SMTP_HOST"), "SMTP host")
 	flag.StringVar(&cfg.smtp.username, "smtp-username", os.Getenv("SMTP_USERNAME"), "SMTP username")
 	flag.StringVar(&cfg.smtp.password, "smtp-password", os.Getenv("SMTP_PASSWORD"), "SMTP password")
@@ -85,11 +74,18 @@ func loadConfig(v *validator.Validator) config {
 		for origin := range strings.FieldsSeq(s) {
 			cfg.cors.trustedOrigins[origin] = struct{}{}
 		}
-
 		return nil
 	})
 
 	flag.Parse()
+
+	if validator.NotBlank(smtpPort) {
+		var err error
+		cfg.smtp.port, err = strconv.Atoi(smtpPort)
+		if err != nil {
+			v.AddError("smtp-port", "must be an integer")
+		}
+	}
 
 	v.Check(cfg.port > 0 && cfg.port <= 65535, "port", "must be between 0 and 65535")
 	v.Check(validator.PermittedValue(cfg.environment, "development", "staging", "production"), "env", "must be one of (development|staging|production)")
@@ -97,8 +93,7 @@ func loadConfig(v *validator.Validator) config {
 	v.Check(validator.NotBlank(cfg.postgres.dsn), "postgres-dsn", "must be not blank")
 	v.Check(cfg.postgres.maxOpenConns > 0 && cfg.postgres.maxOpenConns <= 1000, "postgres-max-open-conns", "must be between 0 and 1000")
 
-	_, err = time.ParseDuration(cfg.postgres.maxIdleTime)
-	if err != nil {
+	if _, err := time.ParseDuration(cfg.postgres.maxIdleTime); err != nil {
 		v.AddError("postgres-max-idle-time", "must be a valid time")
 	}
 
@@ -113,8 +108,9 @@ func loadConfig(v *validator.Validator) config {
 	v.Check(validator.NotBlank(cfg.smtp.password), "smtp-password", "must be not blank")
 	v.Check(validator.NotBlank(cfg.smtp.from), "smtp-from", "must be not blank")
 
-	_, err = mail.ParseAddress(cfg.smtp.from)
-	v.Check(err == nil, "smtp-from", "must be a valid RFC 5322 named address")
+	if _, err := mail.ParseAddress(cfg.smtp.from); err != nil {
+		v.AddError("smtp-from", "must be a valid RFC 5322 named address")
+	}
 
 	return cfg
 }
