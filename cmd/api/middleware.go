@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"expvar"
 	"fmt"
 	"math"
 	"net"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ItakawaM/greenlight/internal/data"
+	"github.com/ItakawaM/greenlight/internal/metrics"
 	"github.com/ItakawaM/greenlight/internal/validator"
 )
 
@@ -200,5 +202,28 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 		}()
 
 		next.ServeHTTP(w, r)
+	})
+}
+
+// metrics is a middleware that records request metrics.
+func (app *application) metrics(next http.Handler) http.Handler {
+	var (
+		totalRequestsReceived           = expvar.NewInt("total_requests_received")
+		totalResponsesSent              = expvar.NewInt("total_responses_sent")
+		totalProcessingTimeMicroseconds = expvar.NewInt("total_processing_time_μs")
+		totalResponsesSentByStatus      = expvar.NewMap("total_responses_sent_by_status")
+	)
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		totalRequestsReceived.Add(1)
+
+		mw := metrics.NewMetricsResponseWriter(w)
+		next.ServeHTTP(mw, r)
+
+		totalResponsesSent.Add(1)
+		totalResponsesSentByStatus.Add(strconv.Itoa(mw.Status()), 1)
+		totalProcessingTimeMicroseconds.Add(time.Since(start).Microseconds())
 	})
 }

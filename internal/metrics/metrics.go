@@ -1,7 +1,8 @@
-package main
+package metrics
 
 import (
 	"expvar"
+	"net/http"
 	"runtime"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// pgxPoolStats represent pgxpool connection pool stats.
 type pgxPoolStats struct {
 	AcquireCount            int64 `json:"acquire_count"`
 	AcquireDuration         int64 `json:"acquire_duration_ns"`
@@ -24,7 +26,57 @@ type pgxPoolStats struct {
 	TotalConns              int32 `json:"total_conns"`
 }
 
-func publishGlobalMetrics(postgres *pgxpool.Pool, redis *redis.Client) {
+// MetricsResponseWriter is a wrapper-struct around http.ResponseWriter
+// that allows for recording sent HTTP status codes.
+type MetricsResponseWriter struct {
+	wrapped       http.ResponseWriter
+	statusCode    int
+	headerWritten bool
+}
+
+// NewMetricsResponseWriter initializes a MetricsResponseWriter object.
+func NewMetricsResponseWriter(w http.ResponseWriter) *MetricsResponseWriter {
+	return &MetricsResponseWriter{
+		wrapped: w,
+	}
+}
+
+// Header implements http.ResponseWriter interface.
+func (mw *MetricsResponseWriter) Header() http.Header {
+	return mw.wrapped.Header()
+}
+
+// WriteHeader implements http.ResponseWriter interface.
+func (mw *MetricsResponseWriter) WriteHeader(statusCode int) {
+	mw.wrapped.WriteHeader(statusCode)
+
+	if !mw.headerWritten {
+		mw.statusCode = statusCode
+		mw.headerWritten = true
+	}
+}
+
+// Write implements http.ResponseWriter interface.
+func (mw *MetricsResponseWriter) Write(b []byte) (int, error) {
+	if !mw.headerWritten {
+		mw.statusCode = http.StatusOK
+		mw.headerWritten = true
+	}
+
+	return mw.wrapped.Write(b)
+}
+
+// Unwrap returns the underlying http.ResponseWriter.
+func (mw *MetricsResponseWriter) Unwrap() http.ResponseWriter {
+	return mw.wrapped
+}
+
+func (mw *MetricsResponseWriter) Status() int {
+	return mw.statusCode
+}
+
+// PublishGlobalMetrics sets global metrics for expvar metrics endpoint.
+func PublishGlobalMetrics(postgres *pgxpool.Pool, redis *redis.Client, version string) {
 	expvar.NewString("version").Set(version)
 
 	expvar.Publish("goroutines", expvar.Func(func() any {

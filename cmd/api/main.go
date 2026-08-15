@@ -11,6 +11,7 @@ import (
 	"github.com/ItakawaM/greenlight/internal/jsonlog"
 	"github.com/ItakawaM/greenlight/internal/limiter"
 	"github.com/ItakawaM/greenlight/internal/mailer"
+	"github.com/ItakawaM/greenlight/internal/metrics"
 	"github.com/ItakawaM/greenlight/internal/validator"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -75,7 +76,7 @@ func main() {
 
 	logger.Info("smtp client established")
 
-	publishGlobalMetrics(postgres, redisClient)
+	metrics.PublishGlobalMetrics(postgres, redisClient, version)
 
 	app := &application{
 		config:  cfg,
