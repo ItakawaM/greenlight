@@ -76,5 +76,9 @@ func (mw *StatusResponseWriter) Unwrap() http.ResponseWriter {
 }
 
 func (mw *StatusResponseWriter) Status() int {
+	if !mw.headerWritten {
+		return http.StatusOK
+	}
+
 	return mw.statusCode
 }
