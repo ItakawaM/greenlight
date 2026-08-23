@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/url"
 	"time"
 
@@ -13,12 +14,7 @@ import (
 // and checks for connectivity by pinging.
 // Returns an error if the DSN is wrong, PostgreSQL settings are wrong or
 // the app can't ping the PostgreSQL instance.
-func NewPostgreSQL(host string, port int, username, password, database string, ssl bool, maxOpenConns int, maxIdleDuration time.Duration) (*pgxpool.Pool, error) {
-	sslMode := "disable"
-	if ssl {
-		sslMode = "require"
-	}
-
+func NewPostgreSQL(host string, port int, username, password, database string, maxOpenConns int, maxIdleDuration time.Duration) (*pgxpool.Pool, error) {
 	u := url.URL{
 		Scheme: "postgres",
 		User:   url.UserPassword(username, password),
@@ -26,8 +22,9 @@ func NewPostgreSQL(host string, port int, username, password, database string, s
 		Path:   database,
 	}
 
+	// sslmode is disable for now as the API is still in development
 	q := u.Query()
-	q.Set("sslmode", sslMode)
+	q.Set("sslmode", "disable")
 	u.RawQuery = q.Encode()
 
 	dsn := u.String()
@@ -35,6 +32,10 @@ func NewPostgreSQL(host string, port int, username, password, database string, s
 	poolCfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("parse pgxpool config: %w", err)
+	}
+
+	if maxOpenConns > math.MaxInt32 {
+		return nil, fmt.Errorf("max open connections exceeded: %d", maxOpenConns)
 	}
 
 	poolCfg.MaxConns = int32(maxOpenConns)

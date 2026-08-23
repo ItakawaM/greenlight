@@ -27,7 +27,6 @@ type PostgreSQLConfig struct {
 	Username     string
 	Password     string
 	Database     string
-	SSL          bool
 	MaxOpenConns int
 	MaxIdleTime  time.Duration
 }
@@ -94,7 +93,6 @@ func LoadConfig(v *validator.Validator, logger *slog.Logger) *Config {
 	cfg.PostgreSQL.Username = os.Getenv("POSTGRES_USERNAME")
 	cfg.PostgreSQL.Password = os.Getenv("POSTGRES_PASSWORD")
 	cfg.PostgreSQL.Database = os.Getenv("POSTGRES_DATABASE")
-	cfg.PostgreSQL.SSL = envBool("POSTGRES_SSL", v)
 	cfg.PostgreSQL.MaxOpenConns = envInt("POSTGRES_MAX_OPEN_CONNS", v)
 	cfg.PostgreSQL.MaxIdleTime = envDuration("POSTGRES_MAX_IDLE_TIME", v)
 
@@ -102,9 +100,11 @@ func LoadConfig(v *validator.Validator, logger *slog.Logger) *Config {
 	cfg.Redis.Port = envInt("REDIS_PORT", v)
 	cfg.Redis.Password = os.Getenv("REDIS_PASSWORD")
 
-	cfg.Limiter.RPS = envFloat("LIMITER_RPS", v)
-	cfg.Limiter.Burst = envInt("LIMITER_BURST", v)
 	cfg.Limiter.Enabled = envBool("LIMITER_ENABLED", v)
+	if cfg.Limiter.Enabled {
+		cfg.Limiter.RPS = envFloat("LIMITER_RPS", v)
+		cfg.Limiter.Burst = envInt("LIMITER_BURST", v)
+	}
 
 	cfg.SMTP.Host = os.Getenv("SMTP_HOST")
 	cfg.SMTP.Port = envInt("SMTP_PORT", v)
@@ -114,8 +114,10 @@ func LoadConfig(v *validator.Validator, logger *slog.Logger) *Config {
 
 	cfg.CORS.TrustedOrigins = envSet("CORS_TRUSTED_ORIGINS", v)
 
-	cfg.Metrics.Port = envInt("METRICS_PORT", v)
 	cfg.Metrics.Enabled = envBool("METRICS_ENABLED", v)
+	if cfg.Metrics.Enabled {
+		cfg.Metrics.Port = envInt("METRICS_PORT", v)
+	}
 
 	v.Check(validator.NotBlank(cfg.Server.Host), "SERVER_HOST", "must be not blank")
 	v.Check(isValidPort(cfg.Server.Port), "SERVER_PORT", "must be between 0 and 65535")
@@ -134,8 +136,10 @@ func LoadConfig(v *validator.Validator, logger *slog.Logger) *Config {
 	v.Check(isValidPort(cfg.Redis.Port), "REDIS_PORT", "must be between 0 and 65535")
 	v.Check(validator.NotBlank(cfg.Redis.Password), "REDIS_PASSWORD", "must be not blank")
 
-	v.Check(cfg.Limiter.RPS > 0, "LIMITER_RPS", "must be > 0")
-	v.Check(cfg.Limiter.Burst > 0, "LIMITER_BURST", "must be > 0")
+	if cfg.Limiter.Enabled {
+		v.Check(cfg.Limiter.RPS > 0, "LIMITER_RPS", "must be > 0")
+		v.Check(cfg.Limiter.Burst > 0, "LIMITER_BURST", "must be > 0")
+	}
 
 	v.Check(validator.NotBlank(cfg.SMTP.Host), "SMTP_HOST", "must be not blank")
 	v.Check(validator.PermittedValue(cfg.SMTP.Port, 25, 465, 587, 2525), "SMTP_PORT", "must be one of (25, 465, 587, 2525)")
@@ -145,7 +149,9 @@ func LoadConfig(v *validator.Validator, logger *slog.Logger) *Config {
 		v.AddError("SMTP_FROM", "must be a valid RFC 5322 named address")
 	}
 
-	v.Check(isValidPort(cfg.Metrics.Port), "METRICS_PORT", "must be between 0 and 65535")
+	if cfg.Metrics.Enabled {
+		v.Check(isValidPort(cfg.Metrics.Port), "METRICS_PORT", "must be between 0 and 65535")
+	}
 
 	return &cfg
 }

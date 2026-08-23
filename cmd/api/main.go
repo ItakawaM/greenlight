@@ -58,7 +58,6 @@ func main() {
 		cfg.PostgreSQL.Username,
 		cfg.PostgreSQL.Password,
 		cfg.PostgreSQL.Database,
-		cfg.PostgreSQL.SSL,
 		cfg.PostgreSQL.MaxOpenConns,
 		cfg.PostgreSQL.MaxIdleTime,
 	)
@@ -95,20 +94,27 @@ func main() {
 
 	logger.Info("smtp client established")
 
+	// optional metrics
 	var metricsReg *metrics.Metrics = nil
 	if cfg.Metrics.Enabled {
 		metricsReg = metrics.NewMetrics()
 	}
 
-	app := &application{
-		config: cfg,
-		logger: logger,
-		models: data.NewModels(postgres),
-		limiter: limiter.New(
+	// optional rate limiting
+	var limiterBucket *limiter.TokenBucketLimiter = nil
+	if cfg.Limiter.Enabled {
+		limiterBucket = limiter.New(
 			redisClient,
 			cfg.Limiter.Burst,
 			cfg.Limiter.RPS,
-		),
+		)
+	}
+
+	app := &application{
+		config:  cfg,
+		logger:  logger,
+		models:  data.NewModels(postgres),
+		limiter: limiterBucket,
 		mailer:  mailClient,
 		metrics: metricsReg,
 	}
