@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"sync"
+	"sync/atomic"
 
 	"github.com/ItakawaM/greenlight/internal/config"
 	"github.com/ItakawaM/greenlight/internal/data"
@@ -21,8 +22,13 @@ type application struct {
 	models  *data.Models
 	limiter *limiter.TokenBucketLimiter
 	mailer  *mailer.Mailer
+
 	metrics *metrics.Metrics
-	wg      sync.WaitGroup
+	// metricsHealthy represents whether the metrics server, if enabled,
+	// managed to start without any errors
+	metricsHealthy atomic.Bool
+
+	wg sync.WaitGroup
 }
 
 // @title           Greenlight API
@@ -117,6 +123,10 @@ func main() {
 		limiter: limiterBucket,
 		mailer:  mailClient,
 		metrics: metricsReg,
+	}
+
+	if app.config.Metrics.Enabled {
+		app.metricsHealthy.Store(true)
 	}
 
 	if err = app.serve(); err != nil {

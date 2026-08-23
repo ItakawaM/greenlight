@@ -90,11 +90,11 @@ func (app *application) serve() error {
 			app.logger.Info("starting metrics server",
 				slog.String("addr", metricsSrv.Addr))
 
-			// metrics server is best-effort and is not required for api to work
-			// if it fails we simply log it and continue
+			// the actual healthcheck of metrics is managed by docker-compose
 			err := metricsSrv.ListenAndServe()
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
 				app.logger.Error("metrics server error", slog.Any("error", err))
+				app.metricsHealthy.Store(false)
 			}
 		}()
 	}
