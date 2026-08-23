@@ -43,6 +43,8 @@ func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Reques
 		} else {
 			resp.Metrics = "available"
 		}
+	} else {
+		resp.Metrics = "disabled"
 	}
 
 	if err := app.writeJSON(w, statusCode, resp, nil); err != nil {
