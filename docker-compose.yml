@@ -1,5 +1,37 @@
 name: greenlight
 services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    container_name: greenlight-app
+    ports:
+      - "127.0.0.1:${SERVER_PORT}:${SERVER_PORT}"
+    expose:
+      - "${METRICS_PORT}"
+    restart: unless-stopped
+
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: "postgres"
+      REDIS_HOST: "redis"
+      SERVER_HOST: "0.0.0.0"
+    networks:
+      - greenlight-network
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:$$SERVER_PORT/v1/healthcheck || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   postgres:
     image: postgres:18.4
     container_name: greenlight-postgres
