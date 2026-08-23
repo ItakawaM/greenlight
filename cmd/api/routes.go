@@ -1,7 +1,6 @@
 package main
 
 import (
-	"expvar"
 	"net/http"
 
 	"github.com/ItakawaM/greenlight/internal/data"
@@ -15,9 +14,7 @@ func (app *application) routes() http.Handler {
 		app.notFoundResponse(w, r)
 	})
 
-	// Metrics
-	mux.Handle("GET /v1/metrics", expvar.Handler())
-
+	// healthcheck
 	mux.HandleFunc("GET /v1/healthcheck", app.healthcheckHandler)
 
 	// Movies API
@@ -34,5 +31,10 @@ func (app *application) routes() http.Handler {
 	// Tokens API
 	mux.HandleFunc("POST /v1/tokens/authentication", app.createAuthenticationTokenHandler)
 
-	return app.metrics(app.recoverPanic(app.enableCORS(app.rateLimit(app.authenticate(mux)))))
+	router := app.recoverPanic(app.enableCORS(app.rateLimit(app.authenticate(mux))))
+	if app.config.Metrics.Enabled {
+		router = app.httpMetrics(mux, router)
+	}
+
+	return router
 }

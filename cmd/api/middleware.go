@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"expvar"
 	"fmt"
 	"math"
 	"net"
@@ -205,25 +204,27 @@ func (app *application) recoverPanic(next http.Handler) http.Handler {
 	})
 }
 
-// metrics is a middleware that records request metrics.
-func (app *application) metrics(next http.Handler) http.Handler {
-	var (
-		totalRequestsReceived           = expvar.NewInt("total_requests_received")
-		totalResponsesSent              = expvar.NewInt("total_responses_sent")
-		totalProcessingTimeMicroseconds = expvar.NewInt("total_processing_time_μs")
-		totalResponsesSentByStatus      = expvar.NewMap("total_responses_sent_by_status")
-	)
-
+// httpMetrics is a middleware that records request metrics.
+// Disabled if metrics are disabled.
+func (app *application) httpMetrics(mux *http.ServeMux, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		totalRequestsReceived.Add(1)
+		// we can check the matched pattern this way before reaching mux
+		_, pattern := mux.Handler(r)
+		switch {
+		case pattern == "/": // 404 and 405
+			pattern = "missing resource"
 
-		mw := metrics.NewMetricsResponseWriter(w)
+		case strings.Contains(pattern, " "): // GET /some/resource
+			pattern = strings.SplitN(pattern, " ", 2)[1]
+		}
+
+		mw := metrics.NewStatusResponseWriter(w)
 		next.ServeHTTP(mw, r)
 
-		totalResponsesSent.Add(1)
-		totalResponsesSentByStatus.Add(strconv.Itoa(mw.Status()), 1)
-		totalProcessingTimeMicroseconds.Add(time.Since(start).Microseconds())
+		status := strconv.Itoa(mw.Status())
+		app.metrics.HttpRequestsTotal.WithLabelValues(r.Method, pattern, status).Add(1)
+		app.metrics.HttpRequestsDuration.WithLabelValues(r.Method, pattern, status).Observe(time.Since(start).Seconds())
 	})
 }

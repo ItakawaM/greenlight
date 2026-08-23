@@ -60,6 +60,11 @@ type CORSConfig struct {
 	TrustedOrigins map[string]struct{}
 }
 
+type MetricsConfig struct {
+	Port    int
+	Enabled bool
+}
+
 // Config represents API and dependencies settings.
 type Config struct {
 	Server     ServerConfig
@@ -68,6 +73,7 @@ type Config struct {
 	Limiter    LimiterConfig
 	SMTP       SMTPConfig
 	CORS       CORSConfig
+	Metrics    MetricsConfig
 }
 
 // LoadConfig loads configuration values from .env.
@@ -108,6 +114,9 @@ func LoadConfig(v *validator.Validator, logger *slog.Logger) *Config {
 
 	cfg.CORS.TrustedOrigins = envSet("CORS_TRUSTED_ORIGINS", v)
 
+	cfg.Metrics.Port = envInt("METRICS_PORT", v)
+	cfg.Metrics.Enabled = envBool("METRICS_ENABLED", v)
+
 	v.Check(validator.NotBlank(cfg.Server.Host), "SERVER_HOST", "must be not blank")
 	v.Check(isValidPort(cfg.Server.Port), "SERVER_PORT", "must be between 0 and 65535")
 	v.Check(validator.NotBlank(cfg.Server.Version), "SERVER_VERSION", "must be not blank")
@@ -135,6 +144,8 @@ func LoadConfig(v *validator.Validator, logger *slog.Logger) *Config {
 	if _, err := mail.ParseAddress(cfg.SMTP.From); err != nil {
 		v.AddError("SMTP_FROM", "must be a valid RFC 5322 named address")
 	}
+
+	v.Check(isValidPort(cfg.Metrics.Port), "METRICS_PORT", "must be between 0 and 65535")
 
 	return &cfg
 }

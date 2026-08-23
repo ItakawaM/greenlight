@@ -21,6 +21,7 @@ type application struct {
 	models  *data.Models
 	limiter *limiter.TokenBucketLimiter
 	mailer  *mailer.Mailer
+	metrics *metrics.Metrics
 	wg      sync.WaitGroup
 }
 
@@ -94,7 +95,10 @@ func main() {
 
 	logger.Info("smtp client established")
 
-	metrics.PublishGlobalMetrics(postgres, redisClient, cfg.Server.Version)
+	var metricsReg *metrics.Metrics = nil
+	if cfg.Metrics.Enabled {
+		metricsReg = metrics.NewMetrics()
+	}
 
 	app := &application{
 		config: cfg,
@@ -105,7 +109,8 @@ func main() {
 			cfg.Limiter.Burst,
 			cfg.Limiter.RPS,
 		),
-		mailer: mailClient,
+		mailer:  mailClient,
+		metrics: metricsReg,
 	}
 
 	if err = app.serve(); err != nil {

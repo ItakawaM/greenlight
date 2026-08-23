@@ -10,6 +10,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // serve is a wrapper around http.Server.ListenAndServe
@@ -22,6 +24,25 @@ func (app *application) serve() error {
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
+	}
+
+	// optional metrics server.
+	var metricsSrv *http.Server
+	if app.config.Metrics.Enabled {
+		metricsMux := http.NewServeMux()
+		metricsMux.Handle("/metrics", promhttp.HandlerFor(
+			app.metrics.Registry,
+			promhttp.HandlerOpts{},
+		))
+
+		metricsSrv = &http.Server{
+			Addr:         fmt.Sprintf("%s:%d", app.config.Server.Host, app.config.Metrics.Port),
+			Handler:      metricsMux,
+			ErrorLog:     slog.NewLogLogger(app.logger.Handler(), slog.LevelError),
+			IdleTimeout:  time.Minute,
+			ReadTimeout:  10 * time.Second,
+			WriteTimeout: 30 * time.Second,
+		}
 	}
 
 	shutdownErr := make(chan error)
@@ -37,12 +58,19 @@ func (app *application) serve() error {
 			app.logger.Info("shutting down server",
 				slog.String("signal", s.String()))
 
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
 
 			if err := srv.Shutdown(ctx); err != nil {
 				shutdownErr <- err
 				return
+			}
+
+			if metricsSrv != nil {
+				if err := metricsSrv.Shutdown(ctx); err != nil {
+					shutdownErr <- err
+					return
+				}
 			}
 
 			app.logger.Info("completing background tasks")
@@ -56,6 +84,18 @@ func (app *application) serve() error {
 			// nothing to shut down, exit without sending on shutdownErr
 		}
 	}()
+
+	if metricsSrv != nil {
+		go func() {
+			app.logger.Info("starting metrics server",
+				slog.String("addr", metricsSrv.Addr))
+
+			err := metricsSrv.ListenAndServe()
+			if err != nil && !errors.Is(err, http.ErrServerClosed) {
+				app.logger.Error("metrics server error", slog.Any("error", err))
+			}
+		}()
+	}
 
 	app.logger.Info("starting server",
 		slog.String("addr", srv.Addr),
