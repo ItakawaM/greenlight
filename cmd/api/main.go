@@ -104,6 +104,7 @@ func main() {
 	var metricsReg *metrics.Metrics = nil
 	if cfg.Metrics.Enabled {
 		metricsReg = metrics.NewMetrics()
+		logger.Info("metrics registry established")
 	}
 
 	// optional rate limiting
@@ -114,6 +115,7 @@ func main() {
 			cfg.Limiter.Burst,
 			cfg.Limiter.RPS,
 		)
+		logger.Info("limiter established")
 	}
 
 	app := &application{

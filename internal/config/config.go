@@ -151,6 +151,7 @@ func LoadConfig(v *validator.Validator, logger *slog.Logger) *Config {
 
 	if cfg.Metrics.Enabled {
 		v.Check(isValidPort(cfg.Metrics.Port), "METRICS_PORT", "must be between 0 and 65535")
+		v.Check(cfg.Server.Port != cfg.Metrics.Port, "METRICS_PORT", "must be different from SERVER_PORT")
 	}
 
 	return &cfg
