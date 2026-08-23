@@ -69,7 +69,7 @@ func (app *application) authenticate(next http.Handler) http.Handler {
 // requireAuthenticatedUser is a middleware that checks whether the user is authenticated.
 // It responds with 401 if the user is not authenticated.
 func (app *application) requireAuthenticatedUser(next http.HandlerFunc) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		user := app.contextGetUser(r)
 
 		if user.IsAnonymous() {
@@ -78,7 +78,7 @@ func (app *application) requireAuthenticatedUser(next http.HandlerFunc) http.Han
 		}
 
 		next.ServeHTTP(w, r)
-	})
+	}
 }
 
 // requireActivatedUser is a middleware that checks whether the authenticated user is active.
@@ -133,7 +133,7 @@ func (app *application) enableCORS(next http.Handler) http.Handler {
 		w.Header().Add("Vary", "Access-Control-Request-Method")
 
 		if origin := strings.TrimSpace(r.Header.Get("Origin")); origin != "" {
-			if _, ok := app.config.cors.trustedOrigins[origin]; ok {
+			if _, ok := app.config.CORS.TrustedOrigins[origin]; ok {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 
 				// Check if the request is preflight
@@ -161,7 +161,7 @@ func (app *application) enableCORS(next http.Handler) http.Handler {
 //   - State: disabled/enabled
 func (app *application) rateLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if app.config.limiter.enabled {
+		if app.config.Limiter.Enabled {
 			ip, _, err := net.SplitHostPort(r.RemoteAddr)
 			if err != nil {
 				app.serverErrorResponse(w, r, err)
@@ -174,7 +174,7 @@ func (app *application) rateLimit(next http.Handler) http.Handler {
 				return
 			}
 
-			w.Header().Set("X-RateLimit-Limit", strconv.Itoa(app.config.limiter.burst))
+			w.Header().Set("X-RateLimit-Limit", strconv.Itoa(app.config.Limiter.Burst))
 			w.Header().Set("X-RateLimit-Remaining", strconv.FormatInt(int64(math.Floor(metadata.Remaining)), 10))
 			w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(
 				time.Now().Add(time.Duration(metadata.ResetAfter*float64(time.Second))).Unix(), 10))

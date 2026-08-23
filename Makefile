@@ -6,13 +6,8 @@ BINARY_PATH ?= ./bin/api
 MAIN_PATH := ./cmd/api
 MIGRATIONS_PATH := ./migrations
 
-POSTGRES_URL := postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=disable
+POSTGRES_URL := postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DATABASE)?sslmode=disable
 REDIS_URL := redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/0
-
-RUN_FLAGS = -port=$(SERVER_PORT) -env=$(SERVER_ENVIRONMENT) \
-	-postgres-max-open-conns=$(POSTGRES_MAX_OPEN_CONNS) -postgres-max-idle-time=$(POSTGRES_MAX_IDLE_TIME) \
-	-limiter-rps=$(LIMITER_RPS) -limiter-burst=$(LIMITER_BURST) -limiter-enabled=$(LIMITER_ENABLED) \
-	-cors-trusted-origins="$(CORS_TRUSTED_ORIGINS)"
 
 .DEFAULT_GOAL := help
 
@@ -28,13 +23,13 @@ RUN_FLAGS = -port=$(SERVER_PORT) -env=$(SERVER_ENVIRONMENT) \
 	test
 
 run:
-	go run $(MAIN_PATH) $(RUN_FLAGS)
+	go run $(MAIN_PATH)
 
 build:
 	go build -o $(BINARY_PATH) $(MAIN_PATH)
 
 build-run: build
-	$(BINARY_PATH) $(RUN_FLAGS)
+	$(BINARY_PATH)
 
 migrate-up:
 	migrate -path=$(MIGRATIONS_PATH) -database="$(POSTGRES_URL)" up

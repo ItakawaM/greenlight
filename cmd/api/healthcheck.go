@@ -26,8 +26,8 @@ func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Reques
 	resp := HealthCheckResponse{
 		Status: "available",
 		SystemInfo: SystemInfo{
-			Environment: app.config.environment,
-			Version:     version,
+			Environment: app.config.Server.Environment,
+			Version:     app.config.Server.Version,
 		},
 	}
 

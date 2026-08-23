@@ -16,7 +16,7 @@ import (
 // that implements graceful shutdown.
 func (app *application) serve() error {
 	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%d", app.config.port),
+		Addr:         fmt.Sprintf("%s:%d", app.config.Server.Host, app.config.Server.Port),
 		Handler:      app.routes(),
 		ErrorLog:     slog.NewLogLogger(app.logger.Handler(), slog.LevelError),
 		IdleTimeout:  time.Minute,
@@ -59,7 +59,7 @@ func (app *application) serve() error {
 
 	app.logger.Info("starting server",
 		slog.String("addr", srv.Addr),
-		slog.String("env", app.config.environment))
+		slog.String("env", app.config.Server.Environment))
 
 	// we have to check if ListenAndServe itself was successful
 	err := srv.ListenAndServe()
@@ -78,7 +78,7 @@ func (app *application) serve() error {
 
 	app.logger.Info("stopped server",
 		slog.String("addr", srv.Addr),
-		slog.String("env", app.config.environment))
+		slog.String("env", app.config.Server.Environment))
 
 	return nil
 }
