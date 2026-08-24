@@ -3,8 +3,9 @@ services:
   api:
     build:
       context: .
-      dockerfile: docker/app/Dockerfile
-    container_name: greenlight-app
+      dockerfile: ./docker/app/Dockerfile
+    image: greenlight-app
+    container_name: greenlight-api
     ports:
       - "127.0.0.1:${SERVER_PORT}:${SERVER_PORT}"
     expose:
@@ -31,6 +32,33 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  prometheus:
+    build:
+      context: ./docker/prometheus
+      dockerfile: Dockerfile
+    image: greenlight-prometheus:v3.14.0
+    container_name: greenlight-prometheus
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT}:9090"
+    restart: unless-stopped
+
+    environment:
+      METRICS_PORT: ${METRICS_PORT}
+    volumes:
+      - prometheus-data:/prometheus
+    networks:
+      greenlight-network:
+
+    depends_on:
+      api:
+        condition: service_healthy
+
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9090/-/healthy || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   postgres:
     image: postgres:18.4
@@ -84,3 +112,4 @@ networks:
 volumes:
   pgdata:
   redis-data:
+  prometheus-data:
