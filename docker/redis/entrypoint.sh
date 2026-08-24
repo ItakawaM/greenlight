@@ -7,5 +7,7 @@ if [ -z "$REDIS_PASSWORD" ]; then
   exit 1
 fi
 
-sed "s/\${REDIS_PASSWORD}/$REDIS_PASSWORD/g" /usr/local/etc/redis/redis.conf > /tmp/redis.conf
-exec redis-server /tmp/redis.conf
+REDIS_CONF="$(mktemp /usr/local/etc/redis/redis.XXXXXX.conf)"
+ESCAPED_PASSWORD=$(printf '%s' "$REDIS_PASSWORD" | sed 's/[\/&\\]/\\&/g')
+sed "s/\${REDIS_PASSWORD}/$ESCAPED_PASSWORD/g" /usr/local/etc/redis/redis.conf.template > "$REDIS_CONF"
+exec redis-server "$REDIS_CONF"

@@ -6,7 +6,7 @@ if [ -z "$METRICS_PORT" ]; then
   exit 1
 fi
 
-sed "s/\${METRICS_PORT}/$METRICS_PORT/g" /tmp/prometheus.yml > /etc/prometheus/prometheus.yml
+sed "s/\${METRICS_PORT}/$METRICS_PORT/g" /etc/prometheus/prometheus.yml.template > /etc/prometheus/prometheus.yml
 
 exec /bin/prometheus \
   --config.file=/etc/prometheus/prometheus.yml \
