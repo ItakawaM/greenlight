@@ -23,7 +23,7 @@ type application struct {
 	limiter *limiter.TokenBucketLimiter
 	mailer  *mailer.Mailer
 
-	metrics *metrics.Metrics
+	metrics *metrics.APIMetrics
 	// metricsHealthy represents whether the metrics server, if enabled,
 	// managed to start without any errors
 	metricsHealthy atomic.Bool
@@ -69,6 +69,7 @@ func main() {
 	)
 	if err != nil {
 		jsonlog.LogFatal(logger, "postgres connection failed", slog.String("error", err.Error()))
+		return
 	}
 	defer postgres.Close() // Graceful shutdown will be implemented later
 
@@ -81,6 +82,7 @@ func main() {
 	)
 	if err != nil {
 		jsonlog.LogFatal(logger, "redis connection failed", slog.String("error", err.Error()))
+		return
 	}
 	defer redisClient.Close() // Graceful shutdown will be implemented later
 
@@ -101,9 +103,10 @@ func main() {
 	logger.Info("smtp client established")
 
 	// optional metrics
-	var metricsReg *metrics.Metrics = nil
+	var metricsReg *metrics.APIMetrics = nil
 	if cfg.Metrics.Enabled {
-		metricsReg = metrics.NewMetrics()
+		metricsReg = metrics.NewAPIMetrics()
+		metricsReg.APIUp.Set(1)
 		logger.Info("metrics registry established")
 	}
 
