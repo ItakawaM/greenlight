@@ -6,10 +6,23 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// newApiUp is a metric that represents whether the application is up.
+func newApiUp() prometheus.Gauge {
+	return prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "api",
+			Subsystem: "http",
+			Name:      "up",
+			Help:      "Whether or not the api is up",
+		})
+}
+
+// newHttpRequestsTotal is a metric that counts the total number of HTTP requests
+// by their method, route and status code.
 func newHttpRequestsTotal() *prometheus.CounterVec {
 	return prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Namespace: "greenlight",
+			Namespace: "api",
 			Subsystem: "http",
 			Name:      "requests_total",
 			Help:      "Total number of HTTP requests at greenlight API",
@@ -17,15 +30,16 @@ func newHttpRequestsTotal() *prometheus.CounterVec {
 		[]string{"method", "route", "status_code"})
 }
 
+// newHttpRequestsDuration is a metric that counts the duration of requests
+// by their method, route and status code.
 func newHttpRequestsDuration() *prometheus.HistogramVec {
 	return prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Namespace: "greenlight",
+			Namespace: "api",
 			Subsystem: "http",
 			Name:      "requests_duration_seconds",
 			Help:      "HTTP request duration in seconds at greenlight API",
 			Buckets:   prometheus.DefBuckets,
-			Unit:      "seconds",
 		},
 		[]string{"method", "route", "status_code"})
 }
@@ -75,6 +89,7 @@ func (mw *StatusResponseWriter) Unwrap() http.ResponseWriter {
 	return mw.wrapped
 }
 
+// Status returns the recorded status code.
 func (mw *StatusResponseWriter) Status() int {
 	if !mw.headerWritten {
 		return http.StatusOK

@@ -5,19 +5,23 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 )
 
-type Metrics struct {
+// APIMetrics represent a collection of metrics collected by the API.
+type APIMetrics struct {
 	Registry             *prometheus.Registry
 	HttpRequestsTotal    *prometheus.CounterVec
 	HttpRequestsDuration *prometheus.HistogramVec
+	APIUp                prometheus.Gauge
 }
 
-func NewMetrics() *Metrics {
+// NewAPIMetrics creates and registers API metrics.
+func NewAPIMetrics() *APIMetrics {
 	reg := prometheus.NewRegistry()
 
-	m := &Metrics{
+	m := &APIMetrics{
 		Registry:             reg,
 		HttpRequestsTotal:    newHttpRequestsTotal(),
 		HttpRequestsDuration: newHttpRequestsDuration(),
+		APIUp:                newApiUp(),
 	}
 
 	reg.MustRegister(
@@ -25,6 +29,7 @@ func NewMetrics() *Metrics {
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 		m.HttpRequestsTotal,
 		m.HttpRequestsDuration,
+		m.APIUp,
 	)
 
 	return m
