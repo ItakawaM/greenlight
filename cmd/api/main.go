@@ -66,6 +66,7 @@ func main() {
 		cfg.PostgreSQL.Database,
 		cfg.PostgreSQL.MaxOpenConns,
 		cfg.PostgreSQL.MaxIdleTime,
+		cfg.PostgreSQL.SSL,
 	)
 	if err != nil {
 		jsonlog.LogFatal(logger, "postgres connection failed", slog.String("error", err.Error()))

@@ -29,6 +29,7 @@ type PostgreSQLConfig struct {
 	Database     string
 	MaxOpenConns int
 	MaxIdleTime  time.Duration
+	SSL          bool
 }
 
 // RedisConfig represents Redis settings.
@@ -93,6 +94,8 @@ func LoadConfig(v *validator.Validator, logger *slog.Logger) *Config {
 	cfg.PostgreSQL.Username = os.Getenv("POSTGRES_USERNAME")
 	cfg.PostgreSQL.Password = os.Getenv("POSTGRES_PASSWORD")
 	cfg.PostgreSQL.Database = os.Getenv("POSTGRES_DATABASE")
+	cfg.PostgreSQL.SSL = envBool("POSTGRES_SSL", v)
+
 	cfg.PostgreSQL.MaxOpenConns = envInt("POSTGRES_MAX_OPEN_CONNS", v)
 	cfg.PostgreSQL.MaxIdleTime = envDuration("POSTGRES_MAX_IDLE_TIME", v)
 

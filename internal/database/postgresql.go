@@ -14,7 +14,12 @@ import (
 // and checks for connectivity by pinging.
 // Returns an error if the DSN is wrong, PostgreSQL settings are wrong or
 // the app can't ping the PostgreSQL instance.
-func NewPostgreSQL(host string, port int, username, password, database string, maxOpenConns int, maxIdleDuration time.Duration) (*pgxpool.Pool, error) {
+func NewPostgreSQL(host string, port int, username, password, database string, maxOpenConns int, maxIdleDuration time.Duration, ssl bool) (*pgxpool.Pool, error) {
+	sslmode := "disable"
+	if ssl {
+		sslmode = "verify-full"
+	}
+
 	u := url.URL{
 		Scheme: "postgres",
 		User:   url.UserPassword(username, password),
@@ -22,9 +27,12 @@ func NewPostgreSQL(host string, port int, username, password, database string, m
 		Path:   database,
 	}
 
-	// sslmode is disable for now as the API is still in development
+	// PostgreSQL exists inside the docker-compose with no connections made outside of it
+	// for this setup having sslmode=disable is fine
+	// if we ever want to add an external service that communicates with our PostgreSQL
+	// we can just flip sslmode=verify-full and provide trusted CA certificates
 	q := u.Query()
-	q.Set("sslmode", "disable")
+	q.Set("sslmode", sslmode)
 	u.RawQuery = q.Encode()
 
 	dsn := u.String()
