@@ -47,11 +47,11 @@ type application struct {
 func main() {
 	logger := jsonlog.New(os.Stdout, slog.LevelInfo)
 
-	cfgValidator := validator.New()
-	cfg := config.LoadConfig(cfgValidator, logger)
-	if !cfgValidator.Valid() {
+	v := validator.New()
+	cfg := config.Load(logger).WithAPI(v)
+	if !v.Valid() {
 		var attrs []slog.Attr
-		for key, value := range cfgValidator.Errors {
+		for key, value := range v.Errors {
 			attrs = append(attrs, slog.Any(key, value))
 		}
 		jsonlog.LogFatal(logger, "invalid values provided in settings", attrs...)
