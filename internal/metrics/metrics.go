@@ -1,8 +1,10 @@
 package metrics
 
 import (
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
+	goredis "github.com/redis/go-redis/v9"
 )
 
 // APIMetrics represent a collection of metrics collected by the API.
@@ -30,6 +32,27 @@ func NewAPIMetrics() *APIMetrics {
 		m.HttpRequestsTotal,
 		m.HttpRequestsDuration,
 		m.APIUp,
+	)
+
+	return m
+}
+
+// ExporterMetrics represent a collection of metrics collected by the exporter
+// from Redis and PostgreSQL.
+type ExporterMetrics struct {
+	Registry *prometheus.Registry
+}
+
+// NewExporterMetrics creates and registers PostgreSQL and Redis Collectors.
+func NewExporterMetrics(redis *goredis.Client, postgres *pgxpool.Pool) *ExporterMetrics {
+	reg := prometheus.NewRegistry()
+
+	m := &ExporterMetrics{
+		Registry: reg,
+	}
+
+	reg.MustRegister(
+		newRedisCollector(redis),
 	)
 
 	return m

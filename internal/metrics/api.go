@@ -11,7 +11,6 @@ func newApiUp() prometheus.Gauge {
 	return prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Namespace: "api",
-			Subsystem: "http",
 			Name:      "up",
 			Help:      "Whether or not the api is up",
 		})
