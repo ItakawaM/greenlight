@@ -6,3 +6,8 @@ scrape_configs:
     metrics_path: /metrics
     static_configs:
       - targets: ["api:${METRICS_PORT}"]
+
+  - job_name: "greenlight-exporter"
+    metrics_path: /metrics
+    static_configs:
+        - targets: ["exporter:${METRICS_PORT}"]
