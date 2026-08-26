@@ -111,7 +111,7 @@ func main() {
 	// optional metrics
 	var metricsReg *metrics.APIMetrics = nil
 	if cfg.Metrics.Enabled {
-		metricsReg = metrics.NewAPIMetrics()
+		metricsReg = metrics.NewAPIMetrics(postgres)
 		metricsReg.APIUp.Set(1)
 		logger.Info("metrics registry established")
 	}

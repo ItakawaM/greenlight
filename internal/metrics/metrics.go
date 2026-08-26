@@ -16,7 +16,7 @@ type APIMetrics struct {
 }
 
 // NewAPIMetrics creates and registers API metrics.
-func NewAPIMetrics() *APIMetrics {
+func NewAPIMetrics(postgres *pgxpool.Pool) *APIMetrics {
 	reg := prometheus.NewRegistry()
 
 	m := &APIMetrics{
@@ -29,6 +29,7 @@ func NewAPIMetrics() *APIMetrics {
 	reg.MustRegister(
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
+		newPgxPoolCollector(postgres),
 		m.HttpRequestsTotal,
 		m.HttpRequestsDuration,
 		m.APIUp,

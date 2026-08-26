@@ -68,24 +68,24 @@ func newRedisCollector(client *goredis.Client) *redisCollector {
 		client: client,
 		up:     prometheus.NewDesc("redis_up", "Whether or not redis is up", nil, nil),
 
-		connectedClients: prometheus.NewDesc("redis_clients_connected_clients", "Number of active clients", nil, nil),
-		blockedClients:   prometheus.NewDesc("redis_clients_blocked_clients", "Number of awaiting clients", nil, nil),
+		connectedClients: prometheus.NewDesc("redis_clients_connected_clients", "Number of active clients.", nil, nil),
+		blockedClients:   prometheus.NewDesc("redis_clients_blocked_clients", "Number of awaiting clients.", nil, nil),
 
-		usedMemory:            prometheus.NewDesc("redis_memory_used_memory_bytes", "Memory used in bytes", nil, nil),
-		maxMemory:             prometheus.NewDesc("redis_memory_max_memory_bytes", "Maximum memory in bytes", nil, nil),
-		memFragmentationRatio: prometheus.NewDesc("redis_memory_fragmentation_ratio", "Memory Fragmentation ratio", nil, nil),
+		usedMemory:            prometheus.NewDesc("redis_memory_used_memory_bytes", "Memory used in bytes.", nil, nil),
+		maxMemory:             prometheus.NewDesc("redis_memory_max_memory_bytes", "Maximum memory in bytes.", nil, nil),
+		memFragmentationRatio: prometheus.NewDesc("redis_memory_fragmentation_ratio", "Memory Fragmentation ratio.", nil, nil),
 
-		rdbLastBgsaveStatus:     prometheus.NewDesc("redis_persistence_rdb_last_bgsave_status", "Last BGSAVE status", nil, nil),
-		aofLastWriteStatus:      prometheus.NewDesc("redis_persistence_aof_last_write_status", "Last AOF write status", nil, nil),
-		rdbChangesSinceLastSave: prometheus.NewDesc("redis_persistence_rdb_changes_since_last_save", "Number of operations since last save", nil, nil),
+		rdbLastBgsaveStatus:     prometheus.NewDesc("redis_persistence_rdb_last_bgsave_status", "Last BGSAVE status.", nil, nil),
+		aofLastWriteStatus:      prometheus.NewDesc("redis_persistence_aof_last_write_status", "Last AOF write status.", nil, nil),
+		rdbChangesSinceLastSave: prometheus.NewDesc("redis_persistence_rdb_changes_since_last_save", "Number of operations since last save.", nil, nil),
 
-		keySpaceHits:             prometheus.NewDesc("redis_stats_keyspace_hits_total", "Total number of key space hits", nil, nil),
-		keySpaceMisses:           prometheus.NewDesc("redis_stats_keyspace_misses_total", "Total number of key space misses", nil, nil),
-		expiredKeys:              prometheus.NewDesc("redis_stats_expired_keys_total", "Total number of expired keys", nil, nil),
-		evictedKeys:              prometheus.NewDesc("redis_stats_evicted_keys_total", "Total number of evicted keys", nil, nil),
-		totalConnectionsReceived: prometheus.NewDesc("redis_stats_connections_received_total", "Total number of connections received", nil, nil),
-		rejectedConnections:      prometheus.NewDesc("redis_stats_rejected_connections_total", "Total number of rejected connections", nil, nil),
-		totalErrorReplies:        prometheus.NewDesc("redis_stats_error_replies_total", "Total number of error replies", nil, nil),
+		keySpaceHits:             prometheus.NewDesc("redis_stats_keyspace_hits_total", "Total number of key space hits.", nil, nil),
+		keySpaceMisses:           prometheus.NewDesc("redis_stats_keyspace_misses_total", "Total number of key space misses.", nil, nil),
+		expiredKeys:              prometheus.NewDesc("redis_stats_expired_keys_total", "Total number of expired keys.", nil, nil),
+		evictedKeys:              prometheus.NewDesc("redis_stats_evicted_keys_total", "Total number of evicted keys.", nil, nil),
+		totalConnectionsReceived: prometheus.NewDesc("redis_stats_connections_received_total", "Total number of connections received.", nil, nil),
+		rejectedConnections:      prometheus.NewDesc("redis_stats_rejected_connections_total", "Total number of rejected connections.", nil, nil),
+		totalErrorReplies:        prometheus.NewDesc("redis_stats_error_replies_total", "Total number of error replies.", nil, nil),
 	}
 }
 
