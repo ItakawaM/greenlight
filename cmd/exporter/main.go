@@ -6,7 +6,7 @@ import (
 
 	"github.com/ItakawaM/greenlight/internal/config"
 	"github.com/ItakawaM/greenlight/internal/database"
-	"github.com/ItakawaM/greenlight/internal/jsonlog"
+	"github.com/ItakawaM/greenlight/internal/logging"
 	"github.com/ItakawaM/greenlight/internal/metrics"
 	"github.com/ItakawaM/greenlight/internal/validator"
 )
@@ -18,7 +18,7 @@ type exporter struct {
 }
 
 func main() {
-	logger := jsonlog.New(os.Stdout, slog.LevelInfo)
+	logger := logging.New(os.Stdout, slog.LevelInfo)
 
 	v := validator.New()
 	cfg := config.Load(logger).
@@ -30,7 +30,7 @@ func main() {
 		for key, value := range v.Errors {
 			attrs = append(attrs, slog.Any(key, value))
 		}
-		jsonlog.LogFatal(logger, "invalid values provided in settings", attrs...)
+		logging.LogFatal(logger, "invalid values provided in settings", attrs...)
 	}
 	logger.Info("settings loaded successfully")
 
@@ -45,10 +45,10 @@ func main() {
 		cfg.PostgreSQL.SSL,
 	)
 	if err != nil {
-		jsonlog.LogFatal(logger, "postgres connection failed", slog.String("error", err.Error()))
+		logging.LogFatal(logger, "postgres connection failed", slog.String("error", err.Error()))
 		return
 	}
-	defer postgres.Close() // Graceful shutdown will be implemented later
+	defer postgres.Close()
 
 	logger.Info("postgres connection pool established")
 
@@ -58,10 +58,15 @@ func main() {
 		cfg.Redis.Password,
 	)
 	if err != nil {
-		jsonlog.LogFatal(logger, "redis connection failed", slog.String("error", err.Error()))
+		logging.LogFatal(logger, "redis connection failed", slog.String("error", err.Error()))
 		return
 	}
-	defer redisClient.Close() // Graceful shutdown will be implemented later
+	defer func() {
+		if err := redisClient.Close(); err != nil {
+			logging.LogFatal(logger, "redis disconnect failed", slog.String("error", err.Error()))
+			return
+		}
+	}()
 
 	logger.Info("redis client connection established")
 
@@ -72,6 +77,6 @@ func main() {
 	}
 
 	if err := service.serve(); err != nil {
-		jsonlog.LogFatal(logger, "server failed", slog.String("error", err.Error()))
+		logging.LogFatal(logger, "server failed", slog.String("error", err.Error()))
 	}
 }

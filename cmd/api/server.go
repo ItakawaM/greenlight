@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ItakawaM/greenlight/internal/logging"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -32,7 +33,10 @@ func (app *application) serve() error {
 		metricsMux := http.NewServeMux()
 		metricsMux.Handle("/metrics", promhttp.HandlerFor(
 			app.metrics.Registry,
-			promhttp.HandlerOpts{},
+			promhttp.HandlerOpts{
+				ErrorLog:      logging.NewSlogProm(app.logger),
+				ErrorHandling: promhttp.ContinueOnError,
+			},
 		))
 
 		metricsSrv = &http.Server{

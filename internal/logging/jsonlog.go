@@ -1,4 +1,4 @@
-package jsonlog
+package logging
 
 import (
 	"context"
