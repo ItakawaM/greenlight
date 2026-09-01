@@ -35,7 +35,7 @@ func (app *application) serve() error {
 			app.metrics.Registry,
 			promhttp.HandlerOpts{
 				ErrorLog:      logging.NewSlogProm(app.logger),
-				ErrorHandling: promhttp.ContinueOnError,
+				ErrorHandling: promhttp.HTTPErrorOnError,
 			},
 		))
 
@@ -95,6 +95,7 @@ func (app *application) serve() error {
 				slog.String("addr", metricsSrv.Addr))
 
 			// the actual healthcheck of metrics is managed by docker-compose
+			app.metricsHealthy.Store(true)
 			err := metricsSrv.ListenAndServe()
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
 				app.logger.Error("metrics server error", slog.Any("error", err))

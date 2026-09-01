@@ -136,10 +136,6 @@ func main() {
 		metrics: metricsReg,
 	}
 
-	if app.config.Metrics.Enabled {
-		app.metricsHealthy.Store(true)
-	}
-
 	if err = app.serve(); err != nil {
 		logging.LogFatal(logger, "server failed", slog.String("error", err.Error()))
 	}
