@@ -13,6 +13,7 @@ type SystemInfo struct {
 type HealthCheckResponse struct {
 	Status     string     `json:"status" example:"available"`
 	SystemInfo SystemInfo `json:"system_info"`
+	Metrics    string     `json:"metrics" example:"unavailable"`
 }
 
 // @Summary      Show API health status
@@ -20,18 +21,33 @@ type HealthCheckResponse struct {
 // @Tags         healthcheck
 // @Produce      json
 // @Success      200  {object} HealthCheckResponse  "System is healthy"
-// @Failure      500  {object} ErrorResponse  "Server error"
+// @Failure      500  {object} ErrorResponse  		"Server error"
+// @Failure      503  {object} HealthCheckResponse  "System is degraded"
 // @Router       /healthcheck [get]
 func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
 	resp := HealthCheckResponse{
 		Status: "available",
 		SystemInfo: SystemInfo{
-			Environment: app.config.environment,
-			Version:     version,
+			Environment: app.config.Server.Environment,
+			Version:     app.config.Server.Version,
 		},
 	}
 
-	if err := app.writeJSON(w, http.StatusOK, resp, nil); err != nil {
+	statusCode := http.StatusOK
+
+	if app.config.Metrics.Enabled {
+		if !app.metricsHealthy.Load() {
+			resp.Metrics = "unavailable"
+			resp.Status = "degraded"
+			statusCode = http.StatusServiceUnavailable
+		} else {
+			resp.Metrics = "available"
+		}
+	} else {
+		resp.Metrics = "disabled"
+	}
+
+	if err := app.writeJSON(w, statusCode, resp, nil); err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }

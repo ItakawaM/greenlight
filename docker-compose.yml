@@ -1,5 +1,39 @@
 name: greenlight
 services:
+  api:
+    build:
+      context: .
+      dockerfile: ./docker/app/Dockerfile
+    image: greenlight-app
+    container_name: greenlight-api
+    ports:
+      - "127.0.0.1:${SERVER_PORT}:${SERVER_PORT}"
+    expose:
+      - "${METRICS_PORT}"
+    restart: unless-stopped
+
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: "postgres"
+      REDIS_HOST: "redis"
+      SERVER_HOST: "0.0.0.0"
+      METRICS_ENABLED: "true"
+    networks:
+      - greenlight-network
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:$$SERVER_PORT/v1/healthcheck || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   postgres:
     image: postgres:18.4
     container_name: greenlight-postgres
@@ -8,9 +42,9 @@ services:
     restart: unless-stopped
 
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_USER: ${POSTGRES_USERNAME}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_DB: ${POSTGRES_DATABASE}
     volumes:
       - pgdata:/var/lib/postgresql
     networks:
@@ -46,9 +80,37 @@ services:
       timeout: 5s
       retries: 5
 
+  prometheus:
+    build:
+      context: ./docker/prometheus
+      dockerfile: Dockerfile
+    image: greenlight-prometheus:v3.14.0
+    container_name: greenlight-prometheus
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT}:9090"
+    restart: unless-stopped
+
+    environment:
+      METRICS_PORT: ${METRICS_PORT}
+    volumes:
+      - prometheus-data:/prometheus
+    networks:
+      greenlight-network:
+
+    depends_on:
+      api:
+        condition: service_healthy
+
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9090/-/healthy || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 networks:
   greenlight-network:
 
 volumes:
   pgdata:
   redis-data:
+  prometheus-data:

@@ -103,7 +103,7 @@ func (t *TokenBucketLimiter) Allow(ctx context.Context, key string) (RateLimitMe
 	}
 	allowed := allowedVal == 1
 
-	remainingVal, ok := (vals[1].(string))
+	remainingVal, ok := vals[1].(string)
 	if !ok {
 		return RateLimitMetadata{}, fmt.Errorf("unexpected type for remaining: %T", vals[1])
 	}
@@ -112,7 +112,7 @@ func (t *TokenBucketLimiter) Allow(ctx context.Context, key string) (RateLimitMe
 		return RateLimitMetadata{}, fmt.Errorf("parsing remaining: %w", err)
 	}
 
-	retryAfterVal, ok := (vals[2].(string))
+	retryAfterVal, ok := vals[2].(string)
 	if !ok {
 		return RateLimitMetadata{}, fmt.Errorf("unexpected type for retryAfter: %T", vals[2])
 	}
@@ -121,7 +121,7 @@ func (t *TokenBucketLimiter) Allow(ctx context.Context, key string) (RateLimitMe
 		return RateLimitMetadata{}, fmt.Errorf("parsing retry_after: %w", err)
 	}
 
-	resetAfterVal, ok := (vals[3].(string))
+	resetAfterVal, ok := vals[3].(string)
 	if !ok {
 		return RateLimitMetadata{}, fmt.Errorf("unexpected type for resetAfter: %T", vals[3])
 	}
