@@ -8,8 +8,7 @@ RUN go mod download
 COPY . .
 
 ENV CGO_ENABLED=0 GOOS=linux
-RUN go build -trimpath -ldflags="-s -w" -o /app/api ./cmd/api && \
-    go build -trimpath -ldflags="-s -w" -o /app/exporter ./cmd/exporter
+RUN go build -trimpath -ldflags="-s -w" -o /app/api ./cmd/api
 
 # TODO: add migrations somewhere around here, but that's for production later
 

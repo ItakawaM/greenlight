@@ -32,7 +32,7 @@ type pgxPoolCollector struct {
 	// maxIdleDestroyCount is a counter that represents the total count of connections destroyed
 	// because they exceeded MaxConnIdleTime.
 	maxIdleDestroyCount *prometheus.Desc
-	// maxLifetimeDestroyCountis a counter that represents the total count of connections destroyed
+	// maxLifetimeDestroyCount is a counter that represents the total count of connections destroyed
 	// because they exceeded MaxConnLifetime.
 	maxLifetimeDestroyCount *prometheus.Desc
 	// newConnsCount is a counter that represents the total count of new connections opened.
